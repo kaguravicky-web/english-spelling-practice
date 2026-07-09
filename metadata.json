@@ -1,0 +1,8 @@
+{
+  "name": "F1 Spelling Grand Prix",
+  "description": "An interactive dictation & spelling practice assistant styled after the Formula 1 Grand Prix, coached by the speed-loving Mr Minions! Pre-loaded with spelling lists, features text-to-speech dictation, real-time feedback, and scans spelling sheets via Gemini Flash AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
