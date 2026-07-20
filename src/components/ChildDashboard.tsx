@@ -466,29 +466,6 @@ export default function ChildDashboard({
   return (
     <div className="w-full flex flex-col items-center" id="child-dashboard-root">
       
-      {/* Short practice greeting */}
-      {!isCompleted && (
-        <div className="w-full max-w-2xl bg-slate-900 border-2 border-yellow-400 p-5 rounded-3xl mb-6 shadow-md flex items-start gap-4 relative overflow-hidden text-white">
-          {/* Checkered flag banner effect */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-[repeating-linear-gradient(45deg,#000,#000_10px,#fff_10px,#fff_20px)] opacity-30"></div>
-          <div className="absolute right-2 bottom-2 text-7xl opacity-10 select-none">🍌</div>
-          <div className="w-14 h-14 rounded-2xl bg-yellow-400 flex items-center justify-center text-4xl shadow-sm flex-shrink-0 border-2 border-white animate-bounce">
-            🍌
-          </div>
-          <div className="space-y-1">
-            <h4 className="font-black text-sm text-yellow-400 flex items-center gap-2 tracking-wide uppercase">
-              <span>Spelling Pit Crew</span>
-              <span className="bg-red-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black tracking-widest animate-pulse">
-                🏎️ READY
-              </span>
-            </h4>
-            <p className={`text-slate-200 leading-relaxed font-medium transition-all ${fs('lg')}`}>
-              Ready, {settings.childName || "Super Kid"}? Spell carefully and use a small hint only when you need it. 🏎️
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Dynamic Font Size Control Toolbar */}
       {!isCompleted && !selectedList && (
         <div className="w-full max-w-2xl bg-white border border-slate-200 p-3.5 rounded-2xl mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-3xs">
