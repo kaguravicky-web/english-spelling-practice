@@ -29,7 +29,7 @@ export default function DashboardHeader({
               F1 Spelling Grand Prix
             </h1>
             <p className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-              <span>Teacher: Mr Minions</span> <span className="text-yellow-500">🍌</span> • <span>Interactive dictation practice</span>
+              <span>Interactive dictation and spelling practice</span>
             </p>
           </div>
         </div>

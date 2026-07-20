@@ -15,6 +15,32 @@ export interface DiffSegment {
 }
 
 /**
+ * Give a short spelling nudge without revealing the complete answer.
+ */
+export function createSpellingHint(expected: string, typed: string, attempt: number): string {
+  const answer = expected.trim();
+  const guess = typed.trim();
+
+  if (!answer) return "Try the word again.";
+  if (!guess) return `It has ${answer.length} letters.`;
+
+  const limit = Math.min(answer.length, guess.length);
+  let mismatchIndex = limit;
+  for (let index = 0; index < limit; index++) {
+    if (answer[index].toLowerCase() !== guess[index].toLowerCase()) {
+      mismatchIndex = index;
+      break;
+    }
+  }
+
+  if (attempt <= 1) {
+    return `Check letter ${mismatchIndex + 1}. The word has ${answer.length} letters.`;
+  }
+
+  return `It starts with “${answer[0]}”. Check letter ${mismatchIndex + 1}.`;
+}
+
+/**
  * Perform a word-by-word diff of the typed sentence against the expected sentence.
  * This is perfect for Singapore primary spelling/dictation tests.
  */
@@ -75,7 +101,7 @@ export function computeSentenceDiff(expected: string, typed: string): {
     // Normalized word match (Spelling matches, but maybe case or punctuation is wrong)
     if (eNorm === tNorm) {
       // Check for capitalization mistake
-      if (eWord.toLowerCase() !== tWord.toLowerCase() && eNorm === tNorm) {
+      if (eWord.toLowerCase() === tWord.toLowerCase()) {
         // Just casing is wrong (e.g. "mother" vs "Mother")
         segments.push({
           type: "capitalization_error",

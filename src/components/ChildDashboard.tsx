@@ -21,7 +21,7 @@ import {
   Star,
   GraduationCap
 } from "lucide-react";
-import { speakText } from "../utils";
+import { createSpellingHint, speakText } from "../utils";
 import { encouragementPhrases, tryAgainPhrases } from "../data";
 
 interface ChildDashboardProps {
@@ -48,11 +48,6 @@ export default function ChildDashboard({
   // Navigation states
   const [selectedList, setSelectedList] = useState<SpellingList | null>(null);
   const [practiceMode, setPracticeMode] = useState<"spelling" | "vocabulary" | "flashcard" | null>(null);
-
-  // Teacher explanation states
-  const [teacherExplanation, setTeacherExplanation] = useState<string | null>(null);
-  const [teacherTip, setTeacherTip] = useState<string | null>(null);
-  const [isLoadingExplanation, setIsLoadingExplanation] = useState(false);
 
   // Dynamic Font Size Scale helper
   const fs = (level: "sm" | "base" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl") => {
@@ -88,48 +83,6 @@ export default function ChildDashboard({
     return "";
   };
 
-  const fetchTeacherExplanation = async (word: string, typed: string, sentence: string, definition: string) => {
-    setTeacherExplanation(null);
-    setTeacherTip(null);
-    setIsLoadingExplanation(true);
-
-    try {
-      const res = await fetch("/api/gemini/explain-mistake", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          word,
-          typed,
-          sentence,
-          definition,
-          childName: settings.childName
-        })
-      });
-
-      const data = await res.json();
-      if (res.ok && data) {
-        setTeacherExplanation(data.explanation);
-        setTeacherTip(data.tip);
-        
-        // Let's read the explanation aloud to the child using Speech Synthesis for maximum interactivity!
-        if (data.explanation) {
-          speakText(data.explanation, 0.85, settings.speechVoice);
-        }
-      } else {
-        throw new Error(data.error || "Failed to fetch");
-      }
-    } catch (e) {
-      console.error("Error fetching explanation:", e);
-      // Fallback local explanation
-      const fallbackMsg = `喔唷！差一点点就拼对啦！词语 "${word}" 的意思是：${definition || "一个超级有用的词语"}。加油，你一定可以做到的！`;
-      setTeacherExplanation(fallbackMsg);
-      setTeacherTip(`提示：仔细核对拼写，再试一次！`);
-      speakText(fallbackMsg, 0.85, settings.speechVoice);
-    } finally {
-      setIsLoadingExplanation(false);
-    }
-  };
-  
   // Difficulty Selection
   const [spellingDifficulty, setSpellingDifficulty] = useState<"beginner" | "intermediate" | "advanced">("beginner");
   const [isChoosingDifficulty, setIsChoosingDifficulty] = useState(false);
@@ -179,9 +132,6 @@ export default function ChildDashboard({
       setAttempts(0);
       setShowHint(false);
       setCurrentHintUsed(false);
-      setTeacherExplanation(null);
-      setTeacherTip(null);
-
       if (currentItem) {
         if (practiceMode === "spelling") {
           playQuestionAudio(currentItem);
@@ -376,8 +326,6 @@ export default function ChildDashboard({
           onAddWrongWord(currentItem);
         }
       }
-      // Call AI Teacher mistake explanation in friendly, simple Chinese
-      fetchTeacherExplanation(currentItem.word, typedAnswer.trim(), currentItem.text, currentItem.definition || "");
     }
   };
 
@@ -444,11 +392,11 @@ export default function ChildDashboard({
   const renderVisualBlanks = (word: string) => {
     const wordLength = word.length;
     
-    let stageTitle = "🌟 Beginner Level (Extra Letter Hints!)";
-    let stageDesc = "We gave you extra letters to help you get started!";
+    let stageTitle = "🌟 Beginner Level";
+    let stageDesc = "The first letter and one small clue are shown.";
     if (spellingDifficulty === "intermediate") {
       stageTitle = "🚀 Intermediate Level (Growing Stronger!)";
-      stageDesc = "Only the first and last letters are shown.";
+      stageDesc = "Only the first letter is shown.";
     } else if (spellingDifficulty === "advanced") {
       stageTitle = "👑 Advanced Level (Spelling Wizard!)";
       stageDesc = "No letters shown. Pure spelling memory!";
@@ -473,20 +421,18 @@ export default function ChildDashboard({
             : "text-2xl sm:text-3xl"
         }`}>
           {word.split("").map((char, index) => {
-            let shouldReveal = showHint;
-            if (!shouldReveal) {
-              if (spellingDifficulty === "beginner") {
-                // Beginner: First, last, and middle letters
-                const middleIndex = Math.floor(wordLength / 2);
-                shouldReveal = index === 0 || index === wordLength - 1 || index === middleIndex;
-                if (wordLength <= 4) shouldReveal = true; // Reveal short words completely
-              } else if (spellingDifficulty === "intermediate") {
-                // Intermediate: First and last letter
-                shouldReveal = index === 0 || index === wordLength - 1;
-              } else {
-                // Advanced: No letters
-                shouldReveal = false;
-              }
+            let shouldReveal = false;
+            if (spellingDifficulty === "beginner") {
+              shouldReveal = index === 0 || (wordLength > 3 && index === wordLength - 1);
+            } else if (spellingDifficulty === "intermediate") {
+              shouldReveal = index === 0;
+            }
+
+            if (showHint) {
+              const middleIndex = Math.floor(wordLength / 2);
+              shouldReveal ||= spellingDifficulty === "advanced"
+                ? index === 0
+                : wordLength > 3 && index === middleIndex;
             }
 
             return (
@@ -520,7 +466,7 @@ export default function ChildDashboard({
   return (
     <div className="w-full flex flex-col items-center" id="child-dashboard-root">
       
-      {/* Friendly Primary Teacher Greeting Bubble */}
+      {/* Short practice greeting */}
       {!isCompleted && (
         <div className="w-full max-w-2xl bg-slate-900 border-2 border-yellow-400 p-5 rounded-3xl mb-6 shadow-md flex items-start gap-4 relative overflow-hidden text-white">
           {/* Checkered flag banner effect */}
@@ -531,13 +477,13 @@ export default function ChildDashboard({
           </div>
           <div className="space-y-1">
             <h4 className="font-black text-sm text-yellow-400 flex items-center gap-2 tracking-wide uppercase">
-              <span>Mr Minions (Spelling Coach)</span>
+              <span>Spelling Pit Crew</span>
               <span className="bg-red-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black tracking-widest animate-pulse">
-                🏎️ F1 COACH
+                🏎️ READY
               </span>
             </h4>
             <p className={`text-slate-200 leading-relaxed font-medium transition-all ${fs('lg')}`}>
-              "Bello {settings.childName || "Super Kid"}! I'm your racing coach, Mr Minions! 🍌 Ready to put your spelling into full throttle? Let's zoom through these words! Earn gold trophies and speed stars as you race to the checkered flag! Remember, avoiding hints gets you the pole position! Box Box, let's start the engine! 🏎️💨"
+              Ready, {settings.childName || "Super Kid"}? Spell carefully and use a small hint only when you need it. 🏎️
             </p>
           </div>
         </div>
@@ -740,7 +686,7 @@ export default function ChildDashboard({
           <div className="space-y-1">
             <h3 className="text-xl font-black text-yellow-400 uppercase tracking-wide">Select Spelling Engine Speed</h3>
             <p className="text-xs text-slate-300">
-              Coach Mr Minions wants you to choose a racing speed for your spelling engine:
+              Choose a racing speed for your spelling practice:
             </p>
           </div>
 
@@ -1133,10 +1079,10 @@ export default function ChildDashboard({
               {/* VOCABULARY MODE RUNNER (MCQ INTERFACE) */}
               {practiceMode === "vocabulary" && vocabQuestion && (
                 <div className="space-y-6">
-                  {/* Dynamic Teacher Question Panel */}
+                  {/* Vocabulary question panel */}
                   <div className="p-5 bg-gradient-to-br from-yellow-50/80 via-amber-50/50 to-red-50/20 border border-yellow-200 rounded-2xl relative">
                     <span className={`font-extrabold uppercase tracking-wider block mb-2 flex items-center gap-1 transition-all text-yellow-700 ${fs('sm')}`}>
-                      🏁 Mr Minions' {vocabQuestion.type === "fill-in" ? "Super Turbo Cloze Game 📝" : "Formula 1 Meaning Matcher 🔍"}
+                      🏁 {vocabQuestion.type === "fill-in" ? "Word Challenge 📝" : "Meaning Match 🔍"}
                     </span>
                     <p className={`font-bold text-slate-700 leading-relaxed whitespace-pre-wrap transition-all ${fs('xl')}`}>
                       {vocabQuestion.questionText}
@@ -1207,7 +1153,7 @@ export default function ChildDashboard({
                       className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100"
                     >
                       <HelpCircle className="w-4 h-4 text-indigo-500" />
-                      {showHint ? "Letter hints are visible!" : "Need help? Reveal letter boxes (-0 stars)"}
+                      {showHint ? "Small letter hint shown" : "Show one small letter hint (no star)"}
                     </button>
                   )}
                 </div>
@@ -1241,23 +1187,6 @@ export default function ChildDashboard({
                         </button>
                       )}
                       
-                      {/* Show reveal option if incorrect */}
-                      {!isCorrect && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const ans = practiceMode === "spelling" ? selectedList.items[currentIndex].word : vocabQuestion?.correctAnswer || "";
-                            setTypedAnswer(ans);
-                            setHasChecked(false);
-                            setIsCorrect(true);
-                            setCurrentHintUsed(true); // Reveal counts as hint
-                          }}
-                          className="text-xs text-red-500 hover:text-red-700 font-bold px-2"
-                        >
-                          Reveal Answer
-                        </button>
-                      )}
-
                       {(isCorrect || attempts >= 3) && (
                         <button
                           id="child-next-question-btn"
@@ -1302,55 +1231,16 @@ export default function ChildDashboard({
                     )}
 
                     {!isCorrect && (
-                      <p className="text-xs text-slate-600 mt-1">
-                        Correct answer was: <strong className="font-mono text-xs text-indigo-600">{practiceMode === "spelling" ? selectedList.items[currentIndex].word : vocabQuestion?.correctAnswer}</strong>
-                      </p>
+                      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+                        <p className="text-[10px] font-black uppercase tracking-wide">Small hint</p>
+                        <p className={`mt-0.5 font-semibold ${fs('base')}`}>
+                          {practiceMode === "spelling"
+                            ? createSpellingHint(selectedList.items[currentIndex].word, typedAnswer, attempts)
+                            : "Read the meaning again and try another choice."}
+                        </p>
+                      </div>
                     )}
                   </div>
-                </div>
-              )}
-
-              {/* AI Teacher Explanation Panel */}
-              {!isCorrect && hasChecked && (
-                <div className="mt-4 bg-yellow-50/50 border-2 border-amber-200 rounded-2xl p-4 space-y-3 relative overflow-hidden shadow-3xs text-left animate-in fade-in slide-in-from-bottom-3 duration-200">
-                  <div className="flex items-center gap-2">
-                    <span className="text-3xl animate-bounce">👨‍🏫</span>
-                    <div>
-                      <h4 className={`font-extrabold text-amber-800 uppercase tracking-wide transition-all ${fs('lg')}`}>
-                        🍌 Mr Minions' 1-on-1 Practice Lap Review (${settings.childName || "Daniel"}'s Coach)
-                      </h4>
-                      <p className="text-[10px] text-slate-400 font-bold">
-                        Encouraging, kid-friendly racing coach lesson on why spelling matters!
-                      </p>
-                    </div>
-                  </div>
-
-                  {isLoadingExplanation ? (
-                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 py-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-amber-600 border-t-transparent"></div>
-                      <span>Mr Minions is explaining your mistake... (Drawing board loading!)</span>
-                    </div>
-                  ) : (
-                    teacherExplanation && (
-                      <div className="space-y-2 pt-1">
-                        <p className={`font-extrabold text-slate-800 leading-relaxed bg-white border border-amber-100 p-4 rounded-xl shadow-inner ${fs('base')}`}>
-                          {teacherExplanation}
-                        </p>
-                        {teacherTip && (
-                          <div className={`bg-amber-100/60 border border-amber-200/50 p-2.5 rounded-lg text-amber-900 font-black flex items-center gap-1.5 transition-all ${fs('sm')}`}>
-                            <span>💡</span>
-                            <span>{teacherTip}</span>
-                          </div>
-                        )}
-                        <button
-                          onClick={() => speakText(teacherExplanation, 0.85, settings.speechVoice)}
-                          className={`flex items-center gap-1 font-black text-amber-700 hover:text-amber-800 underline bg-white/50 px-2 py-1.5 rounded-md transition-all ${fs('base')}`}
-                        >
-                          🔊 Hear Mr Minions Speak (Listen to Coach)
-                        </button>
-                      </div>
-                    )
-                  )}
                 </div>
               )}
             </div>
@@ -1397,7 +1287,7 @@ export default function ChildDashboard({
           {/* Inform child about points deduction for hints */}
           {testResults.some(r => r.hintUsed) && (
             <p className="text-[10px] text-amber-600 leading-relaxed italic max-w-xs mx-auto">
-              🏎️ Coach Mr Minions says: "Bello! Great effort! You took a quick pit stop for letter hints or dictionary lookups. Study the track again to earn the maximum speed stars next lap! 🏁"
+              You used a hint this round. Practise the word again to earn the maximum stars next time.
             </p>
           )}
 
@@ -1460,7 +1350,7 @@ export default function ChildDashboard({
                 Box, Box! Pit Stop?
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed font-semibold">
-                Coach Mr Minions asks: "Are you sure you want to pull into the pit lane? Your spelling race progress on this track will not be saved!"
+                Are you sure you want to leave? Your progress in this practice round will not be saved.
               </p>
               <p className="text-[11px] text-yellow-300 font-bold italic">
                 (中途退出将无法保存当前关卡的练习记录哦，确定要退出吗？)

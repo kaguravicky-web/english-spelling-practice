@@ -1163,7 +1163,7 @@ export default function ParentDashboard({
           ) : (
             <div className="space-y-4">
               <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-xs text-amber-800 font-bold text-left">
-                🏎️ <strong>Mr Minions 提示:</strong> Daniel 可以在听写主页面的第一个列表选择 <strong>"🚨 我的错题本 (Wrong Word Notebook)"</strong> 进行挑战。每当他拼对一个词，该词就会自动清除出本哦！
+                🏎️ <strong>练习提示：</strong>Daniel 可以在听写主页面的第一个列表选择 <strong>"🚨 我的错题本 (Wrong Word Notebook)"</strong> 进行挑战。每当他拼对一个词，该词就会自动清除出本哦！
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
