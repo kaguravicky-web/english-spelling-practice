@@ -1,14 +1,15 @@
 {
-  "name": "react-example",
+  "name": "english-spelling-practice",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "start": "node dist/server.cjs",
-    "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "build": "vite build --configLoader runner && tsc --project tsconfig.server.json",
+    "start": "node dist/server.js",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').rmSync('server.js',{force:true})\"",
+    "lint": "tsc --noEmit",
+    "test": "node --import tsx --test src/utils.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

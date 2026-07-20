@@ -27,7 +27,7 @@ function getGeminiClient(): GoogleGenAI {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Increase body size limit for base64 images
   app.use(express.json({ limit: "15mb" }));
@@ -35,77 +35,6 @@ async function startServer() {
   // API Health Endpoint
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", time: new Date().toISOString() });
-  });
-
-  // API Endpoint to explain a spelling mistake to a 9-year-old child in friendly English
-  app.post("/api/gemini/explain-mistake", async (req, res) => {
-    const { word, typed, sentence, definition, childName } = req.body || {};
-    try {
-      if (!word) {
-        return res.status(400).json({ error: "Missing correct spelling word in request." });
-      }
-
-      const ai = getGeminiClient();
-
-      const systemInstruction = `
-        You are Mr Minions, a funny, warm, and extremely supportive F1 racing spelling coach for a 9-year-old child named ${childName || "Daniel"}.
-        The child's native language is English. Keep your feedback EXTREMELY short, punchy, and direct to the point (maximum 1 or 2 very short sentences). No long-winded intros or wordy chit-chat!
-        
-        Follow these strict guidelines:
-        1. Keep it incredibly brief: 1 or 2 short sentences total. Get straight to the key point!
-        2. Explain only the core visual or phonics mistake comparing correct "${word}" with child's typed answer "${typed || ""}" (e.g., "You swapped the 'a' and 'e'!").
-        3. Give a super brief racing metaphor or encouragement.
-        4. No dry jargon. Keep it ultra-clean, fun, and easy for a 9-year-old to read instantly. Use emojis!
-      `;
-
-      const prompt = `
-        Correct word: "${word}"
-        Child's typed answer: "${typed || ""}"
-        Sentence context: "${sentence || ""}"
-        Child-friendly dictionary definition (if available): "${definition || ""}"
-        
-        Please write an ultra-short, punchy 1-2 sentence tutoring explanation in English for ${childName || "Daniel"}. Keep it very brief!
-      `;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              explanation: {
-                type: Type.STRING,
-                description: "The 9-year-old friendly explanation in English. MUST be extremely short, only 1-2 sentences max, straight to the point."
-              },
-              tip: {
-                type: Type.STRING,
-                description: "A super short spelling mnemonic tip in English, max 6 words (e.g., 'Tip: Silent 'e' at the end!')."
-              }
-            },
-            required: ["explanation", "tip"]
-          }
-        }
-      });
-
-      const responseText = response.text;
-      if (!responseText) {
-        throw new Error("Gemini returned empty response for explanation.");
-      }
-
-      const parsed = JSON.parse(responseText.trim());
-      res.json(parsed);
-
-    } catch (error: any) {
-      console.error("Gemini Explanation Error:", error);
-      // Fallback local explanation generator if Gemini is offline/errored
-      res.json({
-        explanation: `Whoops! So close to the finish line! 🏎️ "${word}" means "${definition || "this spelling word"}". You almost nailed it!`,
-        tip: `Tip: Check the middle letters next time!`
-      });
-    }
   });
 
   // API Endpoint to parse spelling list image using Gemini
@@ -329,6 +258,7 @@ async function startServer() {
   // Handle Vite middleware in development vs static file serving in production
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
+      configLoader: "runner",
       server: { middlewareMode: true },
       appType: "spa",
     });
