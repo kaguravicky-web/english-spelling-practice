@@ -40,6 +40,26 @@ export function createSpellingHint(expected: string, typed: string, attempt: num
   return `It starts with “${answer[0]}”. Check letter ${mismatchIndex + 1}.`;
 }
 
+export function createVocabularyHint(
+  type: "synonym" | "antonym" | "fill-in",
+  correctAnswer: string,
+  definition: string | undefined,
+  attempt: number,
+): string {
+  if (type === "fill-in") {
+    const letterCount = correctAnswer.replace(/[^a-z]/gi, "").length;
+    return attempt <= 1
+      ? `Use the sentence clue. The missing word has ${letterCount} letters.`
+      : `The missing word starts with “${correctAnswer[0]}” and has ${letterCount} letters.`;
+  }
+
+  const relationship = type === "synonym" ? "nearly the same" : "the opposite";
+  const meaning = definition?.trim();
+  return meaning
+    ? `Look for a choice meaning ${relationship}. The original word means: ${meaning}`
+    : `Look for a choice meaning ${relationship}.`;
+}
+
 /**
  * Perform a word-by-word diff of the typed sentence against the expected sentence.
  * This is perfect for Singapore primary spelling/dictation tests.

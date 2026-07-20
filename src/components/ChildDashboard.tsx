@@ -21,7 +21,7 @@ import {
   Star,
   GraduationCap
 } from "lucide-react";
-import { createSpellingHint, speakText } from "../utils";
+import { createSpellingHint, createVocabularyHint, speakText } from "../utils";
 import { encouragementPhrases, tryAgainPhrases } from "../data";
 
 interface ChildDashboardProps {
@@ -1086,11 +1086,11 @@ export default function ChildDashboard({
                           onClick={() => checkAnswer(option)}
                           className={`p-4 rounded-xl text-left border-2 font-extrabold transition-all duration-150 flex items-center gap-3.5 ${
                             hasChecked
-                              ? option === vocabQuestion.correctAnswer
+                              ? isCorrect && option === vocabQuestion.correctAnswer
                                 ? "bg-emerald-50 border-emerald-400 text-emerald-800 shadow-3xs"
                                 : isSelected
                                 ? "bg-red-50 border-red-300 text-red-800"
-                                : "bg-slate-50 border-slate-100 text-slate-400"
+                                : "bg-white border-slate-200 text-slate-600"
                               : isSelected
                               ? "bg-indigo-50 border-indigo-500 text-indigo-800 scale-[1.01]"
                               : "bg-white hover:bg-indigo-50/20 border-slate-200 text-slate-700 hover:border-slate-350"
@@ -1098,11 +1098,11 @@ export default function ChildDashboard({
                         >
                           <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-black flex-shrink-0 ${
                             hasChecked
-                              ? option === vocabQuestion.correctAnswer
+                              ? isCorrect && option === vocabQuestion.correctAnswer
                                 ? "bg-emerald-100 text-emerald-800"
                                 : isSelected
                                 ? "bg-red-100 text-red-800"
-                                : "bg-slate-100 text-slate-400"
+                                : "bg-slate-100 text-slate-600"
                               : isSelected
                               ? "bg-indigo-600 text-white animate-bounce"
                               : "bg-slate-100 text-slate-600"
@@ -1110,7 +1110,7 @@ export default function ChildDashboard({
                             {String.fromCharCode(65 + idx)}
                           </span>
                           <span className={`flex-1 font-sans transition-all ${fs('lg')}`}>{option}</span>
-                          {hasChecked && option === vocabQuestion.correctAnswer && (
+                          {hasChecked && isCorrect && option === vocabQuestion.correctAnswer && (
                             <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                           )}
                         </button>
@@ -1213,7 +1213,14 @@ export default function ChildDashboard({
                         <p className={`mt-0.5 font-semibold ${fs('base')}`}>
                           {practiceMode === "spelling"
                             ? createSpellingHint(selectedList.items[currentIndex].word, typedAnswer, attempts)
-                            : "Read the meaning again and try another choice."}
+                            : vocabQuestion
+                            ? createVocabularyHint(
+                                vocabQuestion.type,
+                                vocabQuestion.correctAnswer,
+                                selectedList.items[currentIndex].definition,
+                                attempts,
+                              )
+                            : "Try another choice."}
                         </p>
                       </div>
                     )}

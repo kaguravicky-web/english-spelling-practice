@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { computeSentenceDiff, createSpellingHint, normalizeWord } from "./utils.ts";
+import { computeSentenceDiff, createSpellingHint, createVocabularyHint, normalizeWord } from "./utils.ts";
 
 test("normalizeWord ignores case and surrounding punctuation", () => {
   assert.equal(normalizeWord("  Racing!  "), "racing");
@@ -42,4 +42,17 @@ test("createSpellingHint stays short and never reveals the answer", () => {
   assert.equal(secondHint, "It starts with “b”. Check letter 4.");
   assert.equal(firstHint.toLowerCase().includes("because"), false);
   assert.equal(secondHint.toLowerCase().includes("because"), false);
+});
+
+test("createVocabularyHint varies by question type without giving the answer", () => {
+  const fillIn = createVocabularyHint("fill-in", "because", undefined, 1);
+  const synonym = createVocabularyHint("synonym", "large", "very big in size", 1);
+  const antonym = createVocabularyHint("antonym", "tiny", "very big in size", 1);
+
+  assert.equal(fillIn, "Use the sentence clue. The missing word has 7 letters.");
+  assert.equal(synonym, "Look for a choice meaning nearly the same. The original word means: very big in size");
+  assert.equal(antonym, "Look for a choice meaning the opposite. The original word means: very big in size");
+  assert.equal(fillIn.includes("because"), false);
+  assert.equal(synonym.includes("large"), false);
+  assert.equal(antonym.includes("tiny"), false);
 });
