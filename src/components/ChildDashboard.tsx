@@ -3,7 +3,6 @@ import { SpellingList, SpellingItem, TestAttempt, ParentSettings } from "../type
 import {
   Volume2,
   VolumeX,
-  Sparkles,
   ArrowRight,
   HelpCircle,
   Play,
@@ -18,7 +17,6 @@ import {
   AlertCircle,
   Clock,
   Book,
-  Star,
   GraduationCap
 } from "lucide-react";
 import { createSpellingHint, createVocabularyHint, speakText } from "../utils";
@@ -96,8 +94,9 @@ export default function ChildDashboard({
   const [hasChecked, setHasChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [attempts, setAttempts] = useState(0);
-  const [showHint, setShowHint] = useState(false);
+  const [letterHintCount, setLetterHintCount] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const spellingCellRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Hint rules tracking: did the kid look up word definitions or show letter hints for the current word?
   const [currentHintUsed, setCurrentHintUsed] = useState(false);
@@ -130,7 +129,7 @@ export default function ChildDashboard({
       setHasChecked(false);
       setIsCorrect(false);
       setAttempts(0);
-      setShowHint(false);
+      setLetterHintCount(0);
       setCurrentHintUsed(false);
       if (currentItem) {
         if (practiceMode === "spelling") {
@@ -220,6 +219,7 @@ export default function ChildDashboard({
     setCurrentIndex(0);
     setTypedAnswer("");
     setHasChecked(false);
+    setLetterHintCount(0);
     setTestResults([]);
     setIsCompleted(false);
   };
@@ -298,7 +298,7 @@ export default function ChildDashboard({
     
     let correct = false;
     if (practiceMode === "spelling") {
-      const userTyped = typedAnswer.trim();
+      const userTyped = getSpellingAnswerCandidate(currentItem.word).trim();
       correct = userTyped.toLowerCase() === currentItem.word.toLowerCase();
     } else if (practiceMode === "vocabulary" && vocabQuestion) {
       const chosen = selectedOption || typedAnswer.trim();
@@ -310,7 +310,8 @@ export default function ChildDashboard({
 
     setIsCorrect(correct);
     setHasChecked(true);
-    setAttempts(prev => prev + 1);
+    const nextAttempts = attempts + 1;
+    setAttempts(nextAttempts);
     triggerEncouragement(correct);
 
     if (correct) {
@@ -319,7 +320,7 @@ export default function ChildDashboard({
         onRemoveWrongWord(currentItem.word);
       }
     } else {
-      speakText("Let's try that one again.", 0.9, settings.speechVoice);
+      speakText(nextAttempts >= 3 && practiceMode === "spelling" ? `The answer is ${currentItem.word}.` : "Let's try that one again.", 0.9, settings.speechVoice);
       if (practiceMode === "spelling" && selectedList.id !== "wrong-words-notebook") {
         // Keep track of wrong words for "advanced" difficulty as requested: "在最高难度总是写错词"
         if (spellingDifficulty === "advanced") {
@@ -339,7 +340,7 @@ export default function ChildDashboard({
       itemId: currentItem.id,
       word: currentItem.word,
       text: currentItem.text,
-      typed: typedAnswer,
+      typed: practiceMode === "spelling" ? getSpellingAnswerCandidate(currentItem.word) : typedAnswer,
       isCorrect: isCorrect,
       hintUsed: currentHintUsed
     };
@@ -378,9 +379,71 @@ export default function ChildDashboard({
     }
   };
 
-  const handleShowHint = () => {
-    setShowHint(true);
+  const handleSetLetterHint = (count: number) => {
+    setLetterHintCount(count);
     setCurrentHintUsed(true); // Hint used! No star for this question.
+  };
+
+  const updateSpellingCell = (index: number, value: string, word: string) => {
+    const nextChar = value.slice(-1);
+    const answerChars = Array.from({ length: word.length }, (_, charIndex) => typedAnswer[charIndex] || " ");
+    answerChars[index] = nextChar;
+    const nextAnswer = answerChars.join("").slice(0, word.length).trimEnd();
+    setTypedAnswer(nextAnswer);
+
+    if (nextChar && index < word.length - 1) {
+      spellingCellRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleSpellingCellKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    index: number,
+    word: string
+  ) => {
+    if (event.key === "Backspace" && !typedAnswer[index]?.trim() && index > 0) {
+      spellingCellRefs.current[index - 1]?.focus();
+      return;
+    }
+
+    if (event.key === "Enter" && isSpellingAnswerComplete(word) && !(hasChecked && isCorrect)) {
+      checkAnswer();
+      return;
+    }
+
+    if (event.key.length === 1 && index < getRevealCount(word.length)) {
+      event.preventDefault();
+      const nextIndex = Math.min(getRevealCount(word.length), word.length - 1);
+      spellingCellRefs.current[nextIndex]?.focus();
+    }
+  };
+
+  const getBaseRevealCount = (wordLength: number) => {
+    if (spellingDifficulty === "advanced") return 0;
+    if (spellingDifficulty === "intermediate") return wordLength <= 4 ? 1 : 2;
+
+    if (wordLength <= 2) return Math.max(0, wordLength - 1);
+    if (wordLength <= 4) return wordLength - 1;
+    if (wordLength <= 6) return wordLength - 2;
+    return Math.ceil(wordLength * 0.55);
+  };
+
+  const getRevealCount = (wordLength: number) => Math.min(wordLength, getBaseRevealCount(wordLength) + letterHintCount);
+
+  const getSpellingAnswerCandidate = (word: string) => {
+    const revealCount = getRevealCount(word.length);
+    return word
+      .split("")
+      .map((char, index) => {
+        const typedChar = typedAnswer[index];
+        return index < revealCount ? char : typedChar && typedChar.trim() ? typedChar : "";
+      })
+      .join("");
+  };
+
+  const isSpellingAnswerComplete = (word: string) => {
+    const revealCount = getRevealCount(word.length);
+    return word.split("").every((_, index) => index < revealCount || Boolean(typedAnswer[index]?.trim()));
   };
 
   const handleOpenDictionary = () => {
@@ -388,31 +451,13 @@ export default function ChildDashboard({
     setCurrentHintUsed(true); // Definition lookup is also a hint! No star for this question.
   };
 
-  // Generate visual hint blanks (e.g. "d _ v _ l _ p")
-  const renderVisualBlanks = (word: string) => {
+  const renderSpellingCells = (word: string) => {
     const wordLength = word.length;
-    
-    let stageTitle = "🌟 Beginner Level";
-    let stageDesc = "The first letter and one small clue are shown.";
-    if (spellingDifficulty === "intermediate") {
-      stageTitle = "🚀 Intermediate Level (Growing Stronger!)";
-      stageDesc = "Only the first letter is shown.";
-    } else if (spellingDifficulty === "advanced") {
-      stageTitle = "👑 Advanced Level (Spelling Wizard!)";
-      stageDesc = "No letters shown. Pure spelling memory!";
-    }
-
+    const baseRevealCount = getBaseRevealCount(wordLength);
+    const totalRevealCount = getRevealCount(wordLength);
+    const answerRevealed = hasChecked && !isCorrect && attempts >= 3;
     return (
       <div className="space-y-3 mt-4 text-center">
-        {/* Stage Badge */}
-        <div className="inline-flex flex-col items-center px-4 py-1.5 bg-indigo-50/50 border border-indigo-100 rounded-xl">
-          <span className="text-[10px] font-black uppercase text-indigo-700 tracking-wide flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-bounce" />
-            {stageTitle}
-          </span>
-          <span className="text-[9px] text-slate-500 font-medium">{stageDesc}</span>
-        </div>
-
         <div className={`flex justify-center gap-1.5 flex-wrap font-sans font-black ${
           settings.fontSize === "huge" 
             ? "text-4xl sm:text-5xl" 
@@ -421,24 +466,24 @@ export default function ChildDashboard({
             : "text-2xl sm:text-3xl"
         }`}>
           {word.split("").map((char, index) => {
-            let shouldReveal = false;
-            if (spellingDifficulty === "beginner") {
-              shouldReveal = index === 0 || (wordLength > 3 && index === wordLength - 1);
-            } else if (spellingDifficulty === "intermediate") {
-              shouldReveal = index === 0;
-            }
-
-            if (showHint) {
-              const middleIndex = Math.floor(wordLength / 2);
-              shouldReveal ||= spellingDifficulty === "advanced"
-                ? index === 0
-                : wordLength > 3 && index === middleIndex;
-            }
+            const shouldReveal = answerRevealed || index < totalRevealCount;
+            const typedChar = typedAnswer[index];
+            const displayValue = shouldReveal ? char : typedChar && typedChar.trim() ? typedChar : "";
 
             return (
-              <div
+              <input
                 key={index}
-                className={`flex items-center justify-center rounded-2xl border-3 transition-all ${
+                ref={(input) => {
+                  spellingCellRefs.current[index] = input;
+                }}
+                aria-label={`Letter ${index + 1} of ${wordLength}`}
+                value={displayValue}
+                maxLength={1}
+                autoFocus={index === totalRevealCount}
+                disabled={shouldReveal || (hasChecked && isCorrect)}
+                onChange={(event) => updateSpellingCell(index, event.target.value, word)}
+                onKeyDown={(event) => handleSpellingCellKeyDown(event, index, word)}
+                className={`text-center rounded-2xl border-3 transition-all outline-hidden ${
                   settings.fontSize === "huge"
                     ? "w-18 h-20 sm:w-20 sm:h-24"
                     : settings.fontSize === "large"
@@ -447,11 +492,11 @@ export default function ChildDashboard({
                 } ${
                   shouldReveal 
                     ? "bg-indigo-50 border-indigo-400 text-indigo-700 font-extrabold scale-105" 
-                    : "bg-white border-slate-250 text-slate-300"
+                    : hasChecked && !isCorrect
+                    ? "bg-red-50 border-red-300 text-red-700 focus:border-red-500"
+                    : "bg-white border-slate-250 text-slate-800 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
                 }`}
-              >
-                {shouldReveal ? char : "_"}
-              </div>
+              />
             );
           })}
         </div>
@@ -466,39 +511,6 @@ export default function ChildDashboard({
   return (
     <div className="w-full flex flex-col items-center" id="child-dashboard-root">
       
-      {/* Dynamic Font Size Control Toolbar */}
-      {!isCompleted && !selectedList && (
-        <div className="w-full max-w-2xl bg-white border border-slate-200 p-3.5 rounded-2xl mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-3xs">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl animate-pulse">🔎</span>
-            <div className="text-left">
-              <p className="text-xs font-bold text-slate-800">字号一键变大 / Child Font Size Booster</p>
-              <p className="text-[10px] text-slate-400 font-bold">Instantly adjusts all spelling words and sentences to be super readable!</p>
-            </div>
-          </div>
-          <div className="flex bg-slate-100 p-1 rounded-xl">
-            {(["normal", "large", "huge"] as const).map((sz) => (
-              <button
-                key={sz}
-                type="button"
-                onClick={() => {
-                  if (onUpdateSettings) {
-                    onUpdateSettings(prev => ({ ...prev, fontSize: sz }));
-                  }
-                }}
-                className={`py-1.5 px-4 text-xs font-black rounded-lg transition-all ${
-                  (settings.fontSize || "normal") === sz
-                    ? "bg-slate-800 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-850"
-                }`}
-              >
-                {sz === "normal" ? "标准 (A)" : sz === "large" ? "大号 (A+)" : "特大 (A++)"}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* 1. SELECTION STATE: CHOOSE SPELLING LIST */}
       {!selectedList && (
         <div className="w-full space-y-6">
@@ -741,46 +753,9 @@ export default function ChildDashboard({
                 Stop Session
               </button>
 
-              {/* Quick Word Dictionary button - clickable dictionary lookup */}
-              <button
-                type="button"
-                onClick={handleOpenDictionary}
-                className="flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1 rounded-xl text-[11px] font-extrabold shadow-3xs"
-              >
-                <Book className="w-3.5 h-3.5" />
-                💡 Word Dictionary (看词义)
-              </button>
-
               <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
                 Question {currentIndex + 1} / {selectedList.items.length}
               </span>
-            </div>
-
-            {/* Quick Practice Mode Font Size Booster bar */}
-            <div className="flex items-center justify-between gap-2 bg-slate-50 p-2 rounded-xl border border-slate-150">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide flex items-center gap-1">
-                <span>🔎 字号一键变大 (Spelling Size Boost):</span>
-              </span>
-              <div className="flex bg-white p-0.5 rounded-lg border border-slate-200">
-                {(["normal", "large", "huge"] as const).map((sz) => (
-                  <button
-                    key={sz}
-                    type="button"
-                    onClick={() => {
-                      if (onUpdateSettings) {
-                        onUpdateSettings(prev => ({ ...prev, fontSize: sz }));
-                      }
-                    }}
-                    className={`py-0.5 px-3.5 text-[9px] font-black rounded-md transition-all ${
-                      (settings.fontSize || "normal") === sz
-                        ? "bg-slate-800 text-white shadow-3xs"
-                        : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    {sz === "normal" ? "标准 (A)" : sz === "large" ? "大号 (A+)" : "特大 (A++)"}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
 
@@ -800,9 +775,6 @@ export default function ChildDashboard({
                       </p>
                     </div>
                   </div>
-                  <span className="bg-red-50 text-red-700 text-[10px] font-black px-2 py-0.5 rounded-full border border-red-100">
-                    No Star Awarded
-                  </span>
                 </div>
 
                 <div className="space-y-3 pt-2 text-xs">
@@ -839,14 +811,11 @@ export default function ChildDashboard({
                     </div>
                   )}
 
-                  <p className={`text-amber-600 leading-relaxed mt-2 italic transition-all ${fs('sm')}`}>
-                    💡 Note: To be fair, looking up the meaning of a word acts as a helper, so you won't earn a gold star for this word this time. Try memorizing it for next time!
-                  </p>
                 </div>
 
                 <button
                   onClick={() => setShowDictionary(false)}
-                  className="w-full bg-slate-850 hover:bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl mt-4"
+                  className="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl mt-4 border border-slate-700 shadow-xs"
                 >
                   I Understand, Let's Practice!
                 </button>
@@ -991,7 +960,7 @@ export default function ChildDashboard({
                       </div>
                     </div>
 
-                    {renderVisualBlanks(selectedList.items[currentIndex].word)}
+                    {renderSpellingCells(selectedList.items[currentIndex].word)}
 
                     {/* Sentence Context display on-screen with blanked word for native English kids to read along! */}
                     <div className="mt-5 p-4 bg-white/80 border border-indigo-100/50 rounded-2xl max-w-lg mx-auto shadow-2xs text-left">
@@ -1019,37 +988,6 @@ export default function ChildDashboard({
                     </div>
                   </div>
 
-                  {/* KEYBOARD MODE INPUT */}
-                  <div className="space-y-3">
-                    <label className={`block font-bold text-slate-600 uppercase tracking-wide transition-all ${fs('base')}`}>
-                      Type spelling answer:
-                    </label>
-
-                    <input
-                      id="child-typed-input"
-                      type="text"
-                      autoFocus
-                      autoComplete="off"
-                      autoCorrect="off"
-                      autoCapitalize="off"
-                      value={typedAnswer}
-                      onChange={(e) => setTypedAnswer(e.target.value)}
-                      disabled={hasChecked && isCorrect}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && typedAnswer.trim() && !(hasChecked && isCorrect)) {
-                          checkAnswer();
-                        }
-                      }}
-                      placeholder="Type spelling word..."
-                      className={`w-full font-sans text-center font-extrabold border-3 border-indigo-200 focus:border-indigo-500 rounded-2xl px-5 transition-all text-slate-800 focus:outline-hidden focus:ring-4 focus:ring-indigo-100 bg-indigo-50/10 focus:bg-white shadow-xs ${
-                        settings.fontSize === "huge" 
-                          ? "text-5xl sm:text-6xl py-6" 
-                          : settings.fontSize === "large" 
-                          ? "text-4xl sm:text-5xl py-5" 
-                          : "text-3xl sm:text-4xl py-4"
-                      }`}
-                    />
-                  </div>
                 </div>
               )}
 
@@ -1123,16 +1061,39 @@ export default function ChildDashboard({
               {/* Interactive Hints/Controls Footer */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
                 <div>
-                  {practiceMode === "spelling" && !hasChecked && (
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={handleShowHint}
-                      className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100"
+                      onClick={handleOpenDictionary}
+                      className="flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-xl text-xs font-extrabold shadow-3xs"
                     >
-                      <HelpCircle className="w-4 h-4 text-indigo-500" />
-                      {showHint ? "Small letter hint shown" : "Show one small letter hint (no star)"}
+                      <Book className="w-3.5 h-3.5" />
+                      Word Meaning
                     </button>
-                  )}
+
+                    {practiceMode === "spelling" && !hasChecked && (
+                      <>
+                        <span className="text-[10px] font-black uppercase tracking-wide text-slate-500 flex items-center gap-1">
+                          <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
+                          Letter hints
+                        </span>
+                        {[1, 2, 3].map(count => (
+                          <button
+                            key={count}
+                            type="button"
+                            onClick={() => handleSetLetterHint(count)}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
+                              letterHintCount >= count
+                                ? "bg-indigo-600 border-indigo-600 text-white"
+                                : "bg-indigo-50 border-indigo-100 text-indigo-600 hover:text-indigo-800"
+                            }`}
+                          >
+                            {count} Letter{count > 1 ? "s" : ""}
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex gap-2 w-full sm:w-auto">
@@ -1141,7 +1102,7 @@ export default function ChildDashboard({
                     <button
                       id="child-check-answer-btn"
                       type="button"
-                      disabled={!typedAnswer.trim()}
+                      disabled={!isSpellingAnswerComplete(selectedList.items[currentIndex].word)}
                       onClick={() => checkAnswer()}
                       className="w-full sm:w-auto bg-slate-800 hover:bg-slate-900 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold py-2.5 px-6 rounded-xl shadow-3xs flex items-center justify-center gap-1.5 transition-all"
                     >
@@ -1193,25 +1154,15 @@ export default function ChildDashboard({
                       {isCorrect ? "Fantastic! " + currentEncouragement : "Not quite! " + currentEncouragement}
                     </h4>
                     
-                    {isCorrect && (
-                      <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1.5 font-bold">
-                        {currentHintUsed ? (
-                          <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded-sm border border-amber-100">
-                            ⭐ Hint Used! You learned a new word, but no gold star is earned this time. Try again later!
-                          </span>
-                        ) : (
-                          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-sm border border-emerald-100 flex items-center gap-1">
-                            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-bounce" /> Correct without hints! +1 Gold Star Earned!
-                          </span>
-                        )}
-                      </p>
-                    )}
-
                     {!isCorrect && (
                       <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
-                        <p className="text-[10px] font-black uppercase tracking-wide">Small hint</p>
+                        <p className="text-[10px] font-black uppercase tracking-wide">
+                          {practiceMode === "spelling" && attempts >= 3 ? "Answer" : "Small hint"}
+                        </p>
                         <p className={`mt-0.5 font-semibold ${fs('base')}`}>
-                          {practiceMode === "spelling"
+                          {practiceMode === "spelling" && attempts >= 3
+                            ? selectedList.items[currentIndex].word
+                            : practiceMode === "spelling"
                             ? createSpellingHint(selectedList.items[currentIndex].word, typedAnswer, attempts)
                             : vocabQuestion
                             ? createVocabularyHint(
@@ -1264,16 +1215,9 @@ export default function ChildDashboard({
               <span className="text-3xl font-black text-amber-500 block">
                 +{testResults.filter(r => r.isCorrect && !r.hintUsed).length} ✨
               </span>
-              <span className="text-[10px] text-slate-400 uppercase font-black tracking-wide block">Gold Stars Earned</span>
+              <span className="text-[10px] text-slate-400 uppercase font-black tracking-wide block">Clean Score</span>
             </div>
           </div>
-
-          {/* Inform child about points deduction for hints */}
-          {testResults.some(r => r.hintUsed) && (
-            <p className="text-[10px] text-amber-600 leading-relaxed italic max-w-xs mx-auto">
-              You used a hint this round. Practise the word again to earn the maximum stars next time.
-            </p>
-          )}
 
           {/* Certificate Badge Selection */}
           <div className="space-y-2 pt-2">
