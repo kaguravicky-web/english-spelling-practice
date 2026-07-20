@@ -8,6 +8,7 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => {
   return {
+    base: process.env.GITHUB_ACTIONS ? '/english-spelling-practice/' : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
