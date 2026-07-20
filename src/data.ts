@@ -417,7 +417,7 @@ export const defaultSpellingLists: SpellingList[] = [
       {
         id: 5,
         word: "leaned",
-        text: "Daniel leaned over the metal fence to get a better view of the F1 cars.",
+        text: "Ji Dam leaned over the metal fence to get a better view of the F1 cars.",
         definition: "Bent your body in a particular direction.",
         synonyms: ["tilted", "bent", "slanted", "bowed"],
         antonyms: ["stood straight", "straightened"]
