@@ -7,6 +7,8 @@ import { SpellingList, SpellingItem, TestAttempt, ParentSettings } from "./types
 import { getSpeechVoices } from "./utils";
 import { Baby, Settings, Sparkles, Star, User, Volume2 } from "lucide-react";
 
+const CHILD_NAME = "Ji Dam";
+
 export default function App() {
   // Mode toggle: child (default so kids can use easily) or parent
   const [mode, setMode] = useState<"child" | "parent">("child");
@@ -73,14 +75,14 @@ export default function App() {
         const parsed = JSON.parse(saved);
         // Ensure default speechRate is friendlier if not customized
         if (parsed && typeof parsed.speechRate === "number") {
-          return parsed;
+          return { ...parsed, childName: CHILD_NAME };
         }
       } catch (e) {
         console.error("Error reading settings from local storage:", e);
       }
     }
     return {
-      childName: "Daniel",
+      childName: CHILD_NAME,
       speechRate: 0.7, // Lowered default to be slow and kid-friendly
       speechVoice: ""
     };
@@ -239,27 +241,12 @@ export default function App() {
                   Child Learner Profile
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Configure learning preferences, spelling voice speed, and name.
+                  Configure learning preferences and spelling voice speed for Ji Dam.
                 </p>
               </div>
 
               {/* Form details */}
               <div className="space-y-4">
-                {/* Child Name Input */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Your Child's Name
-                  </label>
-                  <input
-                    id="profile-child-name-input"
-                    type="text"
-                    value={parentSettings.childName}
-                    onChange={(e) => setParentSettings(prev => ({ ...prev, childName: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                    placeholder="e.g. Daniel"
-                  />
-                </div>
-
                 {/* Avatar Chooser */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">

@@ -1134,10 +1134,10 @@ export default function ParentDashboard({
             <div className="text-left">
               <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
                 <span>🚨</span>
-                {childName || "Daniel"} 的错题本 (Spelling Mistake Notebook)
+                {childName} 的错题本 (Spelling Mistake Notebook)
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                Here are the spelling words {childName || "Daniel"} got wrong on the highest difficulty ("Pro Grand Prix" level). He can redo them anytime directly in the spelling track!
+                Here are the spelling words {childName} got wrong on the highest difficulty ("Pro Grand Prix" level). He can redo them anytime directly in the spelling track!
               </p>
             </div>
             {wrongWords.length > 0 && (
@@ -1155,15 +1155,15 @@ export default function ParentDashboard({
           {wrongWords.length === 0 ? (
             <div className="text-center py-16 space-y-3 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
               <span className="text-5xl block animate-bounce">🏆</span>
-              <h4 className="font-extrabold text-slate-800 text-sm">错题本空空如也！Daniel 棒棒哒！</h4>
+              <h4 className="font-extrabold text-slate-800 text-sm">错题本空空如也！{childName} 棒棒哒！</h4>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                No mistakes registered yet! {childName || "Daniel"} hasn't missed any spelling words on Advanced difficulty, or he has successfully cleared them all! Keep it up!
+                No mistakes registered yet! {childName} hasn't missed any spelling words on Advanced difficulty, or he has successfully cleared them all! Keep it up!
               </p>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-xs text-amber-800 font-bold text-left">
-                🏎️ <strong>练习提示：</strong>Daniel 可以在听写主页面的第一个列表选择 <strong>"🚨 我的错题本 (Wrong Word Notebook)"</strong> 进行挑战。每当他拼对一个词，该词就会自动清除出本哦！
+                🏎️ <strong>练习提示：</strong>{childName} 可以在听写主页面的第一个列表选择 <strong>"🚨 我的错题本 (Wrong Word Notebook)"</strong> 进行挑战。每当他拼对一个词，该词就会自动清除出本哦！
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
