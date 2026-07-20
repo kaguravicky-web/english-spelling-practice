@@ -23,6 +23,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { computeSentenceDiff } from "../utils";
+import { createPracticeListWithReview } from "../review";
 
 interface ParentDashboardProps {
   spellingLists: SpellingList[];
@@ -301,7 +302,11 @@ export default function ParentDashboard({
       .map((item, idx) => ({
         id: idx + 1,
         word: item.word.toLowerCase().trim(),
-        text: item.text.trim() || `Listen and write the word ${item.word}.`
+        text: item.text.trim() || `Listen and write the word ${item.word}.`,
+        definition: item.definition,
+        synonyms: item.synonyms,
+        antonyms: item.antonyms,
+        clozeSentence: item.clozeSentence
       }));
 
     if (validatedItems.length === 0) {
@@ -322,14 +327,14 @@ export default function ParentDashboard({
         // Update existing
         return prev.map(l => l.id === editingListId ? savedList : l);
       } else {
-        // Insert new
-        return [savedList, ...prev];
+        // Insert new, with recent review words mixed in automatically.
+        return [createPracticeListWithReview(savedList, prev), ...prev];
       }
     });
 
     setIsCreating(false);
     setEditingListId(null);
-    alert(editingListId ? "Spelling list updated successfully!" : "New spelling list added!");
+    alert(editingListId ? "Spelling list updated successfully!" : "New spelling list added with review words from the last two weeks!");
   };
 
   return (
@@ -819,12 +824,22 @@ export default function ParentDashboard({
                       <p className="text-xs text-slate-600 font-semibold mb-3">
                         Contains {list.items.length} words to test.
                       </p>
+                      {list.reviewSources && list.reviewSources.length > 0 && (
+                        <p className="text-[11px] text-emerald-700 font-semibold mb-3 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1">
+                          Includes review from: {list.reviewSources.join(", ")}
+                        </p>
+                      )}
 
                       <div className="flex flex-wrap gap-1.5 max-h-[76px] overflow-hidden mb-3">
                         {list.items.map((item) => (
                           <span
                             key={item.id}
-                            className="bg-slate-50 border border-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded-full font-mono"
+                            className={`border text-xs px-2 py-0.5 rounded-full font-mono ${
+                              item.reviewSource
+                                ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+                                : "bg-slate-50 border-slate-100 text-slate-700"
+                            }`}
+                            title={item.reviewSource ? `Review from ${item.reviewSource}` : undefined}
                           >
                             {item.word}
                           </span>
@@ -847,6 +862,11 @@ export default function ParentDashboard({
                             <span className="font-bold text-indigo-600">{item.id}.</span>
                             <span>
                               <strong className="underline decoration-indigo-400 font-sans">{item.word}</strong>: "{item.text}"
+                              {item.reviewSource && (
+                                <span className="ml-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-sm px-1">
+                                  Review: {item.reviewSource}
+                                </span>
+                              )}
                             </span>
                           </div>
                         ))}

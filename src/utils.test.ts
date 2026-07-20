@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { computeSentenceDiff, createSpellingHint, createVocabularyHint, normalizeWord } from "./utils.ts";
+import { createPracticeListWithReview, getRecentReviewLists } from "./review.ts";
+import { SpellingList } from "./types.ts";
 
 test("normalizeWord ignores case and surrounding punctuation", () => {
   assert.equal(normalizeWord("  Racing!  "), "racing");
@@ -55,4 +57,48 @@ test("createVocabularyHint varies by question type without giving the answer", (
   assert.equal(fillIn.includes("because"), false);
   assert.equal(synonym.includes("large"), false);
   assert.equal(antonym.includes("tiny"), false);
+});
+
+test("createPracticeListWithReview adds deduped words from the two most recent same-language lists", () => {
+  const week7: SpellingList = {
+    id: "week7",
+    week: "Week 7",
+    language: "en",
+    items: [{ id: 1, word: "older", text: "An older word." }]
+  };
+  const week8: SpellingList = {
+    id: "week8",
+    week: "Week 8",
+    language: "en",
+    items: [{ id: 1, word: "recent", text: "A recent word." }]
+  };
+  const week9: SpellingList = {
+    id: "week9",
+    week: "Week 9",
+    language: "en",
+    items: [
+      { id: 1, word: "latest", text: "A latest word." },
+      { id: 2, word: "because", text: "Duplicate current word." }
+    ]
+  };
+  const chinese: SpellingList = {
+    id: "week9-zh",
+    week: "Week 9",
+    language: "zh",
+    items: [{ id: 1, word: "复习", text: "复习很重要。" }]
+  };
+  const current: SpellingList = {
+    id: "list-200",
+    week: "Week 10",
+    language: "en",
+    items: [{ id: 1, word: "because", text: "Because I tried." }]
+  };
+
+  const recent = getRecentReviewLists(current, [week7, week8, week9, chinese]);
+  const withReview = createPracticeListWithReview(current, [week7, week8, week9, chinese]);
+
+  assert.deepEqual(recent.map(list => list.week), ["Week 9", "Week 8"]);
+  assert.deepEqual(withReview.items.map(item => item.word), ["because", "latest", "recent"]);
+  assert.deepEqual(withReview.reviewSources, ["Week 9", "Week 8"]);
+  assert.equal(withReview.items[1].reviewSource, "Week 9");
 });

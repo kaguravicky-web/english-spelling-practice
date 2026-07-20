@@ -6,6 +6,7 @@ export interface SpellingItem {
   synonyms?: string[]; // similar meaning words
   antonyms?: string[]; // opposite meaning words
   clozeSentence?: string; // custom fill-in sentence, otherwise fallback to text replacement
+  reviewSource?: string; // list title this review word came from
 }
 
 export interface SpellingList {
@@ -15,6 +16,7 @@ export interface SpellingList {
   items: SpellingItem[];
   isPreloaded?: boolean;
   language?: "en" | "zh"; // Added for language separation
+  reviewSources?: string[]; // previous weekly lists mixed in for spaced review
 }
 
 export interface TestAttempt {
