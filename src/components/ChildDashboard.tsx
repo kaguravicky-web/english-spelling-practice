@@ -30,6 +30,9 @@ interface ChildDashboardProps {
   settings: ParentSettings;
   avatarEmoji: string;
   onUpdateSettings?: (updater: (prev: ParentSettings) => ParentSettings) => void;
+  wrongWords: SpellingItem[];
+  onAddWrongWord: (item: SpellingItem) => void;
+  onRemoveWrongWord: (word: string) => void;
 }
 
 export default function ChildDashboard({
@@ -37,11 +40,95 @@ export default function ChildDashboard({
   onCompleteTest,
   settings,
   avatarEmoji,
-  onUpdateSettings
+  onUpdateSettings,
+  wrongWords,
+  onAddWrongWord,
+  onRemoveWrongWord
 }: ChildDashboardProps) {
   // Navigation states
   const [selectedList, setSelectedList] = useState<SpellingList | null>(null);
   const [practiceMode, setPracticeMode] = useState<"spelling" | "vocabulary" | "flashcard" | null>(null);
+
+  // Teacher explanation states
+  const [teacherExplanation, setTeacherExplanation] = useState<string | null>(null);
+  const [teacherTip, setTeacherTip] = useState<string | null>(null);
+  const [isLoadingExplanation, setIsLoadingExplanation] = useState(false);
+
+  // Dynamic Font Size Scale helper
+  const fs = (level: "sm" | "base" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl") => {
+    const scale = settings.fontSize || "normal";
+    if (scale === "huge") {
+      if (level === "sm") return "text-sm sm:text-base";
+      if (level === "base") return "text-base sm:text-lg font-bold";
+      if (level === "lg") return "text-lg sm:text-xl font-bold";
+      if (level === "xl") return "text-xl sm:text-2xl font-extrabold";
+      if (level === "2xl") return "text-2xl sm:text-3xl font-extrabold";
+      if (level === "3xl") return "text-3xl sm:text-4xl font-black";
+      if (level === "4xl") return "text-4xl sm:text-5xl font-black";
+      if (level === "5xl") return "text-5xl sm:text-6xl font-black";
+    } else if (scale === "large") {
+      if (level === "sm") return "text-xs sm:text-sm";
+      if (level === "base") return "text-sm sm:text-base font-semibold";
+      if (level === "lg") return "text-base sm:text-lg font-bold";
+      if (level === "xl") return "text-lg sm:text-xl font-bold";
+      if (level === "2xl") return "text-xl sm:text-2xl font-extrabold";
+      if (level === "3xl") return "text-2xl sm:text-3xl font-extrabold";
+      if (level === "4xl") return "text-3xl sm:text-4xl font-black";
+      if (level === "5xl") return "text-4xl sm:text-5xl font-black";
+    }
+    // normal fallback
+    if (level === "sm") return "text-[11px] sm:text-xs";
+    if (level === "base") return "text-xs sm:text-sm font-medium";
+    if (level === "lg") return "text-sm sm:text-base font-semibold";
+    if (level === "xl") return "text-base sm:text-lg font-bold";
+    if (level === "2xl") return "text-lg sm:text-xl font-bold";
+    if (level === "3xl") return "text-xl sm:text-2xl font-extrabold";
+    if (level === "4xl") return "text-2xl sm:text-3xl font-black";
+    if (level === "5xl") return "text-3xl sm:text-4xl font-black";
+    return "";
+  };
+
+  const fetchTeacherExplanation = async (word: string, typed: string, sentence: string, definition: string) => {
+    setTeacherExplanation(null);
+    setTeacherTip(null);
+    setIsLoadingExplanation(true);
+
+    try {
+      const res = await fetch("/api/gemini/explain-mistake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          word,
+          typed,
+          sentence,
+          definition,
+          childName: settings.childName
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data) {
+        setTeacherExplanation(data.explanation);
+        setTeacherTip(data.tip);
+        
+        // Let's read the explanation aloud to the child using Speech Synthesis for maximum interactivity!
+        if (data.explanation) {
+          speakText(data.explanation, 0.85, settings.speechVoice);
+        }
+      } else {
+        throw new Error(data.error || "Failed to fetch");
+      }
+    } catch (e) {
+      console.error("Error fetching explanation:", e);
+      // Fallback local explanation
+      const fallbackMsg = `喔唷！差一点点就拼对啦！词语 "${word}" 的意思是：${definition || "一个超级有用的词语"}。加油，你一定可以做到的！`;
+      setTeacherExplanation(fallbackMsg);
+      setTeacherTip(`提示：仔细核对拼写，再试一次！`);
+      speakText(fallbackMsg, 0.85, settings.speechVoice);
+    } finally {
+      setIsLoadingExplanation(false);
+    }
+  };
   
   // Difficulty Selection
   const [spellingDifficulty, setSpellingDifficulty] = useState<"beginner" | "intermediate" | "advanced">("beginner");
@@ -92,6 +179,8 @@ export default function ChildDashboard({
       setAttempts(0);
       setShowHint(false);
       setCurrentHintUsed(false);
+      setTeacherExplanation(null);
+      setTeacherTip(null);
 
       if (currentItem) {
         if (practiceMode === "spelling") {
@@ -276,8 +365,19 @@ export default function ChildDashboard({
 
     if (correct) {
       speakText("Awesome! That is correct!", 0.9, settings.speechVoice);
+      if (selectedList.id === "wrong-words-notebook") {
+        onRemoveWrongWord(currentItem.word);
+      }
     } else {
       speakText("Let's try that one again.", 0.9, settings.speechVoice);
+      if (practiceMode === "spelling" && selectedList.id !== "wrong-words-notebook") {
+        // Keep track of wrong words for "advanced" difficulty as requested: "在最高难度总是写错词"
+        if (spellingDifficulty === "advanced") {
+          onAddWrongWord(currentItem);
+        }
+      }
+      // Call AI Teacher mistake explanation in friendly, simple Chinese
+      fetchTeacherExplanation(currentItem.word, typedAnswer.trim(), currentItem.text, currentItem.definition || "");
     }
   };
 
@@ -365,7 +465,13 @@ export default function ChildDashboard({
           <span className="text-[9px] text-slate-500 font-medium">{stageDesc}</span>
         </div>
 
-        <div className="flex justify-center gap-1.5 flex-wrap font-sans text-2xl sm:text-3xl font-black">
+        <div className={`flex justify-center gap-1.5 flex-wrap font-sans font-black ${
+          settings.fontSize === "huge" 
+            ? "text-4xl sm:text-5xl" 
+            : settings.fontSize === "large" 
+            ? "text-3xl sm:text-4xl" 
+            : "text-2xl sm:text-3xl"
+        }`}>
           {word.split("").map((char, index) => {
             let shouldReveal = showHint;
             if (!shouldReveal) {
@@ -386,7 +492,13 @@ export default function ChildDashboard({
             return (
               <div
                 key={index}
-                className={`w-14 h-16 sm:w-16 sm:h-20 flex items-center justify-center rounded-2xl border-3 transition-all ${
+                className={`flex items-center justify-center rounded-2xl border-3 transition-all ${
+                  settings.fontSize === "huge"
+                    ? "w-18 h-20 sm:w-20 sm:h-24"
+                    : settings.fontSize === "large"
+                    ? "w-16 h-18 sm:w-18 sm:h-22"
+                    : "w-14 h-16 sm:w-16 sm:h-20"
+                } ${
                   shouldReveal 
                     ? "bg-indigo-50 border-indigo-400 text-indigo-700 font-extrabold scale-105" 
                     : "bg-white border-slate-250 text-slate-300"
@@ -424,9 +536,42 @@ export default function ChildDashboard({
                 🏎️ F1 COACH
               </span>
             </h4>
-            <p className="text-xs text-slate-200 leading-relaxed font-medium">
+            <p className={`text-slate-200 leading-relaxed font-medium transition-all ${fs('lg')}`}>
               "Bello {settings.childName || "Super Kid"}! I'm your racing coach, Mr Minions! 🍌 Ready to put your spelling into full throttle? Let's zoom through these words! Earn gold trophies and speed stars as you race to the checkered flag! Remember, avoiding hints gets you the pole position! Box Box, let's start the engine! 🏎️💨"
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic Font Size Control Toolbar */}
+      {!isCompleted && !selectedList && (
+        <div className="w-full max-w-2xl bg-white border border-slate-200 p-3.5 rounded-2xl mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-3xs">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl animate-pulse">🔎</span>
+            <div className="text-left">
+              <p className="text-xs font-bold text-slate-800">字号一键变大 / Child Font Size Booster</p>
+              <p className="text-[10px] text-slate-400 font-bold">Instantly adjusts all spelling words and sentences to be super readable!</p>
+            </div>
+          </div>
+          <div className="flex bg-slate-100 p-1 rounded-xl">
+            {(["normal", "large", "huge"] as const).map((sz) => (
+              <button
+                key={sz}
+                type="button"
+                onClick={() => {
+                  if (onUpdateSettings) {
+                    onUpdateSettings(prev => ({ ...prev, fontSize: sz }));
+                  }
+                }}
+                className={`py-1.5 px-4 text-xs font-black rounded-lg transition-all ${
+                  (settings.fontSize || "normal") === sz
+                    ? "bg-slate-800 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-850"
+                }`}
+              >
+                {sz === "normal" ? "标准 (A)" : sz === "large" ? "大号 (A+)" : "特大 (A++)"}
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -663,28 +808,57 @@ export default function ChildDashboard({
         <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-xs relative">
           
           {/* Practice Header Controls */}
-          <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-            <button
-              onClick={handleExitPractice}
-              className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-slate-600"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Stop Session
-            </button>
+          <div className="flex flex-col gap-2.5 mb-4 border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handleExitPractice}
+                className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-slate-600 animate-pulse"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Stop Session
+              </button>
 
-            {/* Quick Word Dictionary button - clickable dictionary lookup */}
-            <button
-              type="button"
-              onClick={handleOpenDictionary}
-              className="flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1 rounded-xl text-[11px] font-extrabold shadow-3xs"
-            >
-              <Book className="w-3.5 h-3.5" />
-              💡 Word Dictionary (看词义)
-            </button>
+              {/* Quick Word Dictionary button - clickable dictionary lookup */}
+              <button
+                type="button"
+                onClick={handleOpenDictionary}
+                className="flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1 rounded-xl text-[11px] font-extrabold shadow-3xs"
+              >
+                <Book className="w-3.5 h-3.5" />
+                💡 Word Dictionary (看词义)
+              </button>
 
-            <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
-              Question {currentIndex + 1} / {selectedList.items.length}
-            </span>
+              <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
+                Question {currentIndex + 1} / {selectedList.items.length}
+              </span>
+            </div>
+
+            {/* Quick Practice Mode Font Size Booster bar */}
+            <div className="flex items-center justify-between gap-2 bg-slate-50 p-2 rounded-xl border border-slate-150">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                <span>🔎 字号一键变大 (Spelling Size Boost):</span>
+              </span>
+              <div className="flex bg-white p-0.5 rounded-lg border border-slate-200">
+                {(["normal", "large", "huge"] as const).map((sz) => (
+                  <button
+                    key={sz}
+                    type="button"
+                    onClick={() => {
+                      if (onUpdateSettings) {
+                        onUpdateSettings(prev => ({ ...prev, fontSize: sz }));
+                      }
+                    }}
+                    className={`py-0.5 px-3.5 text-[9px] font-black rounded-md transition-all ${
+                      (settings.fontSize || "normal") === sz
+                        ? "bg-slate-800 text-white shadow-3xs"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    {sz === "normal" ? "标准 (A)" : sz === "large" ? "大号 (A+)" : "特大 (A++)"}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* DICTIONARY OVERLAY / TOOLTIP POPUP */}
@@ -695,7 +869,7 @@ export default function ChildDashboard({
                   <div className="flex items-center gap-2">
                     <span className="text-3xl">📖</span>
                     <div>
-                      <h4 className="font-extrabold text-base text-slate-800">
+                      <h4 className={`font-extrabold text-slate-800 transition-all ${fs('lg')}`}>
                         "{selectedList.items[currentIndex].word}"
                       </h4>
                       <p className="text-[10px] text-indigo-600 uppercase font-black tracking-widest">
@@ -711,7 +885,7 @@ export default function ChildDashboard({
                 <div className="space-y-3 pt-2 text-xs">
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-150">
                     <span className="text-[10px] uppercase font-black text-slate-400 block mb-1">Kid-friendly Definition</span>
-                    <p className="font-semibold text-slate-700 leading-relaxed">
+                    <p className={`font-semibold text-slate-700 leading-relaxed transition-all ${fs('base')}`}>
                       {selectedList.items[currentIndex].definition || "No definition specified. Use context clues to figure out this spelling word!"}
                     </p>
                   </div>
@@ -721,7 +895,7 @@ export default function ChildDashboard({
                       <span className="text-[10px] uppercase font-black text-slate-400 block mb-1">Synonyms (近义词)</span>
                       <div className="flex flex-wrap gap-1">
                         {selectedList.items[currentIndex].synonyms!.map((syn, idx) => (
-                          <span key={idx} className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold px-2.5 py-0.5 rounded-md">
+                          <span key={idx} className={`bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold px-2.5 py-0.5 rounded-md transition-all ${fs('sm')}`}>
                             {syn}
                           </span>
                         ))}
@@ -734,7 +908,7 @@ export default function ChildDashboard({
                       <span className="text-[10px] uppercase font-black text-slate-400 block mb-1">Antonyms (反义词)</span>
                       <div className="flex flex-wrap gap-1">
                         {selectedList.items[currentIndex].antonyms!.map((ant, idx) => (
-                          <span key={idx} className="bg-pink-50 text-pink-700 border border-pink-100 font-bold px-2.5 py-0.5 rounded-md">
+                          <span key={idx} className={`bg-pink-50 text-pink-700 border border-pink-100 font-bold px-2.5 py-0.5 rounded-md transition-all ${fs('sm')}`}>
                             {ant}
                           </span>
                         ))}
@@ -742,7 +916,7 @@ export default function ChildDashboard({
                     </div>
                   )}
 
-                  <p className="text-[10px] text-amber-600 leading-relaxed mt-2 italic">
+                  <p className={`text-amber-600 leading-relaxed mt-2 italic transition-all ${fs('sm')}`}>
                     💡 Note: To be fair, looking up the meaning of a word acts as a helper, so you won't earn a gold star for this word this time. Try memorizing it for next time!
                   </p>
                 </div>
@@ -762,7 +936,13 @@ export default function ChildDashboard({
             <div className="space-y-6 py-6 text-center">
               <div className="bg-gradient-to-tr from-slate-50 to-indigo-50/20 border border-slate-200 rounded-2xl p-6 shadow-3xs inline-block w-full">
                 <span className="text-xs text-indigo-500 font-extrabold uppercase tracking-widest block mb-2">SPELLING WORD</span>
-                <h2 className="text-5xl sm:text-7xl font-black text-indigo-700 tracking-wide font-sans py-3 select-all">
+                <h2 className={`font-black text-indigo-700 tracking-wide font-sans py-3 select-all transition-all ${
+                  settings.fontSize === "huge" 
+                    ? "text-7xl sm:text-8xl" 
+                    : settings.fontSize === "large" 
+                    ? "text-6xl sm:text-7xl" 
+                    : "text-5xl sm:text-7xl"
+                }`}>
                   {selectedList.items[currentIndex].word}
                 </h2>
 
@@ -790,14 +970,14 @@ export default function ChildDashboard({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto text-left">
                 <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl">
                   <span className="text-[10px] text-slate-400 font-extrabold block tracking-wide uppercase mb-1">School Sentence</span>
-                  <p className="text-xs font-semibold text-slate-700 italic leading-relaxed">
+                  <p className={`font-semibold text-slate-700 italic leading-relaxed transition-all ${fs('lg')}`}>
                     "{selectedList.items[currentIndex].text}"
                   </p>
                 </div>
 
                 <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl">
                   <span className="text-[10px] text-amber-700 font-extrabold block tracking-wide uppercase mb-1">What does it mean?</span>
-                  <p className="text-xs font-semibold text-slate-700 leading-relaxed">
+                  <p className={`font-semibold text-slate-700 leading-relaxed transition-all ${fs('lg')}`}>
                     {selectedList.items[currentIndex].definition || "No custom meaning yet."}
                   </p>
                 </div>
@@ -889,11 +1069,36 @@ export default function ChildDashboard({
                     </div>
 
                     {renderVisualBlanks(selectedList.items[currentIndex].word)}
+
+                    {/* Sentence Context display on-screen with blanked word for native English kids to read along! */}
+                    <div className="mt-5 p-4 bg-white/80 border border-indigo-100/50 rounded-2xl max-w-lg mx-auto shadow-2xs text-left">
+                      <span className="text-[10px] text-indigo-500 font-extrabold uppercase tracking-wider block mb-1">
+                        🏎️ Race Lap Sentence (例句提示)
+                      </span>
+                      <p className={`font-bold text-indigo-950 leading-relaxed transition-all ${fs('xl')}`}>
+                        {(() => {
+                          const item = selectedList.items[currentIndex];
+                          if (!item) return "";
+                          const word = item.word;
+                          const text = item.text;
+                          const regex = new RegExp(`\\b${word}\\b`, "gi");
+                          if (regex.test(text)) {
+                            return text.replace(regex, "_______");
+                          }
+                          return text.replace(new RegExp(word, "gi"), "_______");
+                        })()}
+                      </p>
+                      {selectedList.items[currentIndex].definition && (
+                        <p className={`text-slate-500 font-semibold mt-2 border-t border-slate-100 pt-2 transition-all ${fs('base')}`}>
+                          💡 Meaning: {selectedList.items[currentIndex].definition}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   {/* KEYBOARD MODE INPUT */}
                   <div className="space-y-3">
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    <label className={`block font-bold text-slate-600 uppercase tracking-wide transition-all ${fs('base')}`}>
                       Type spelling answer:
                     </label>
 
@@ -913,7 +1118,13 @@ export default function ChildDashboard({
                         }
                       }}
                       placeholder="Type spelling word..."
-                      className="w-full font-sans text-center text-3xl sm:text-4xl font-extrabold border-3 border-indigo-200 focus:border-indigo-500 rounded-2xl px-5 py-4 focus:outline-hidden focus:ring-4 focus:ring-indigo-100 bg-indigo-50/10 focus:bg-white shadow-xs transition-all text-slate-800"
+                      className={`w-full font-sans text-center font-extrabold border-3 border-indigo-200 focus:border-indigo-500 rounded-2xl px-5 transition-all text-slate-800 focus:outline-hidden focus:ring-4 focus:ring-indigo-100 bg-indigo-50/10 focus:bg-white shadow-xs ${
+                        settings.fontSize === "huge" 
+                          ? "text-5xl sm:text-6xl py-6" 
+                          : settings.fontSize === "large" 
+                          ? "text-4xl sm:text-5xl py-5" 
+                          : "text-3xl sm:text-4xl py-4"
+                      }`}
                     />
                   </div>
                 </div>
@@ -924,10 +1135,10 @@ export default function ChildDashboard({
                 <div className="space-y-6">
                   {/* Dynamic Teacher Question Panel */}
                   <div className="p-5 bg-gradient-to-br from-yellow-50/80 via-amber-50/50 to-red-50/20 border border-yellow-200 rounded-2xl relative">
-                    <span className="text-xs text-yellow-700 font-extrabold uppercase tracking-wider block mb-2 flex items-center gap-1">
+                    <span className={`font-extrabold uppercase tracking-wider block mb-2 flex items-center gap-1 transition-all text-yellow-700 ${fs('sm')}`}>
                       🏁 Mr Minions' {vocabQuestion.type === "fill-in" ? "Super Turbo Cloze Game 📝" : "Formula 1 Meaning Matcher 🔍"}
                     </span>
-                    <p className="text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">
+                    <p className={`font-bold text-slate-700 leading-relaxed whitespace-pre-wrap transition-all ${fs('xl')}`}>
                       {vocabQuestion.questionText}
                     </p>
 
@@ -950,7 +1161,7 @@ export default function ChildDashboard({
                           type="button"
                           disabled={hasChecked}
                           onClick={() => checkAnswer(option)}
-                          className={`p-4 rounded-xl text-left border-2 text-xs font-extrabold transition-all duration-150 flex items-center gap-3.5 ${
+                          className={`p-4 rounded-xl text-left border-2 font-extrabold transition-all duration-150 flex items-center gap-3.5 ${
                             hasChecked
                               ? option === vocabQuestion.correctAnswer
                                 ? "bg-emerald-50 border-emerald-400 text-emerald-800 shadow-3xs"
@@ -960,9 +1171,9 @@ export default function ChildDashboard({
                               : isSelected
                               ? "bg-indigo-50 border-indigo-500 text-indigo-800 scale-[1.01]"
                               : "bg-white hover:bg-indigo-50/20 border-slate-200 text-slate-700 hover:border-slate-350"
-                          }`}
+                          } ${fs('base')}`}
                         >
-                          <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-black ${
+                          <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-black flex-shrink-0 ${
                             hasChecked
                               ? option === vocabQuestion.correctAnswer
                                 ? "bg-emerald-100 text-emerald-800"
@@ -975,7 +1186,7 @@ export default function ChildDashboard({
                           }`}>
                             {String.fromCharCode(65 + idx)}
                           </span>
-                          <span className="flex-1 font-sans">{option}</span>
+                          <span className={`flex-1 font-sans transition-all ${fs('lg')}`}>{option}</span>
                           {hasChecked && option === vocabQuestion.correctAnswer && (
                             <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                           )}
@@ -1096,6 +1307,50 @@ export default function ChildDashboard({
                       </p>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* AI Teacher Explanation Panel */}
+              {!isCorrect && hasChecked && (
+                <div className="mt-4 bg-yellow-50/50 border-2 border-amber-200 rounded-2xl p-4 space-y-3 relative overflow-hidden shadow-3xs text-left animate-in fade-in slide-in-from-bottom-3 duration-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-3xl animate-bounce">👨‍🏫</span>
+                    <div>
+                      <h4 className={`font-extrabold text-amber-800 uppercase tracking-wide transition-all ${fs('lg')}`}>
+                        🍌 Mr Minions' 1-on-1 Practice Lap Review (${settings.childName || "Daniel"}'s Coach)
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-bold">
+                        Encouraging, kid-friendly racing coach lesson on why spelling matters!
+                      </p>
+                    </div>
+                  </div>
+
+                  {isLoadingExplanation ? (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 py-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-amber-600 border-t-transparent"></div>
+                      <span>Mr Minions is explaining your mistake... (Drawing board loading!)</span>
+                    </div>
+                  ) : (
+                    teacherExplanation && (
+                      <div className="space-y-2 pt-1">
+                        <p className={`font-extrabold text-slate-800 leading-relaxed bg-white border border-amber-100 p-4 rounded-xl shadow-inner ${fs('base')}`}>
+                          {teacherExplanation}
+                        </p>
+                        {teacherTip && (
+                          <div className={`bg-amber-100/60 border border-amber-200/50 p-2.5 rounded-lg text-amber-900 font-black flex items-center gap-1.5 transition-all ${fs('sm')}`}>
+                            <span>💡</span>
+                            <span>{teacherTip}</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => speakText(teacherExplanation, 0.85, settings.speechVoice)}
+                          className={`flex items-center gap-1 font-black text-amber-700 hover:text-amber-800 underline bg-white/50 px-2 py-1.5 rounded-md transition-all ${fs('base')}`}
+                        >
+                          🔊 Hear Mr Minions Speak (Listen to Coach)
+                        </button>
+                      </div>
+                    )
+                  )}
                 </div>
               )}
             </div>

@@ -39,4 +39,5 @@ export interface ParentSettings {
   childName: string;
   speechRate: number; // e.g., 0.8 (slower for kids)
   speechVoice: string; // voice name
+  fontSize?: "normal" | "large" | "huge"; // child font size scaling
 }

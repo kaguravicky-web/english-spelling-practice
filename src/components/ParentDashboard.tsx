@@ -30,6 +30,9 @@ interface ParentDashboardProps {
   testAttempts: TestAttempt[];
   clearHistory: () => void;
   childName: string;
+  wrongWords: SpellingItem[];
+  onRemoveWrongWord: (word: string) => void;
+  onClearWrongWords: () => void;
 }
 
 export default function ParentDashboard({
@@ -37,10 +40,13 @@ export default function ParentDashboard({
   setSpellingLists,
   testAttempts,
   clearHistory,
-  childName
+  childName,
+  wrongWords,
+  onRemoveWrongWord,
+  onClearWrongWords
 }: ParentDashboardProps) {
   // Tabs for Parent Dashboard
-  const [activeTab, setActiveTab] = useState<"lists" | "history" | "analytics">("lists");
+  const [activeTab, setActiveTab] = useState<"lists" | "history" | "analytics" | "notebook">("lists");
 
   // Manual list creator / editor state
   const [isCreating, setIsCreating] = useState(false);
@@ -365,6 +371,18 @@ export default function ParentDashboard({
         >
           <TrendingUp className="w-4 h-4" />
           Learning Insights
+        </button>
+        <button
+          id="parent-tab-notebook"
+          onClick={() => { setActiveTab("notebook"); setIsCreating(false); }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+            activeTab === "notebook"
+              ? "border-indigo-600 text-indigo-600"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          <span className="text-sm">🚨</span>
+          错题本 / Mistake Notebook ({wrongWords.length})
         </button>
       </div>
 
@@ -1106,6 +1124,84 @@ export default function ParentDashboard({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB 4: WRONG WORD NOTEBOOK / 错题本 */}
+      {activeTab === "notebook" && (
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div className="text-left">
+              <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                <span>🚨</span>
+                {childName || "Daniel"} 的错题本 (Spelling Mistake Notebook)
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Here are the spelling words {childName || "Daniel"} got wrong on the highest difficulty ("Pro Grand Prix" level). He can redo them anytime directly in the spelling track!
+              </p>
+            </div>
+            {wrongWords.length > 0 && (
+              <button
+                type="button"
+                onClick={onClearWrongWords}
+                className="self-start sm:self-center flex items-center gap-1.5 text-xs font-black text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-100 px-3.5 py-1.5 rounded-xl transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                清空错题本 (Clear All)
+              </button>
+            )}
+          </div>
+
+          {wrongWords.length === 0 ? (
+            <div className="text-center py-16 space-y-3 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+              <span className="text-5xl block animate-bounce">🏆</span>
+              <h4 className="font-extrabold text-slate-800 text-sm">错题本空空如也！Daniel 棒棒哒！</h4>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                No mistakes registered yet! {childName || "Daniel"} hasn't missed any spelling words on Advanced difficulty, or he has successfully cleared them all! Keep it up!
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-xs text-amber-800 font-bold text-left">
+                🏎️ <strong>Mr Minions 提示:</strong> Daniel 可以在听写主页面的第一个列表选择 <strong>"🚨 我的错题本 (Wrong Word Notebook)"</strong> 进行挑战。每当他拼对一个词，该词就会自动清除出本哦！
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {wrongWords.map((item, index) => (
+                  <div
+                    key={index}
+                    className="p-4 bg-white border border-slate-200 rounded-2xl shadow-3xs flex justify-between items-start group hover:border-slate-350 transition-all"
+                  >
+                    <div className="space-y-1 text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-slate-400 font-bold">#{index + 1}</span>
+                        <strong className="text-lg font-black text-slate-800 font-sans tracking-wide">
+                          {item.word}
+                        </strong>
+                      </div>
+                      <p className="text-xs text-slate-500 italic leading-relaxed">
+                        "{item.text}"
+                      </p>
+                      {item.definition && (
+                        <p className="text-[11px] text-indigo-600 font-semibold mt-1">
+                          📖 {item.definition}
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => onRemoveWrongWord(item.word)}
+                      className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 border border-transparent hover:border-red-100 transition-all"
+                      title="Remove word from notebook"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

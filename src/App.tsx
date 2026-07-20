@@ -3,7 +3,7 @@ import DashboardHeader from "./components/DashboardHeader";
 import ChildDashboard from "./components/ChildDashboard";
 import ParentDashboard from "./components/ParentDashboard";
 import { defaultSpellingLists, avatarList } from "./data";
-import { SpellingList, TestAttempt, ParentSettings } from "./types";
+import { SpellingList, SpellingItem, TestAttempt, ParentSettings } from "./types";
 import { getSpeechVoices } from "./utils";
 import { Baby, Settings, Sparkles, Star, User, Volume2 } from "lucide-react";
 
@@ -47,6 +47,19 @@ export default function App() {
         return JSON.parse(saved);
       } catch (e) {
         console.error("Error reading test attempts from local storage:", e);
+      }
+    }
+    return [];
+  });
+
+  // Wrong words / mistake book state
+  const [wrongWords, setWrongWords] = useState<SpellingItem[]>(() => {
+    const saved = localStorage.getItem("spelling_buddy_wrong_words");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Error reading wrong words from local storage:", e);
       }
     }
     return [];
@@ -138,6 +151,42 @@ export default function App() {
     localStorage.setItem("spelling_buddy_avatar_id", avatarId);
   }, [avatarId]);
 
+  // Save wrong words to localStorage
+  useEffect(() => {
+    localStorage.setItem("spelling_buddy_wrong_words", JSON.stringify(wrongWords));
+  }, [wrongWords]);
+
+  const handleAddWrongWord = (item: SpellingItem) => {
+    setWrongWords(prev => {
+      if (prev.some(w => w.word.toLowerCase().trim() === item.word.toLowerCase().trim())) {
+        return prev;
+      }
+      return [...prev, item];
+    });
+  };
+
+  const handleRemoveWrongWord = (word: string) => {
+    setWrongWords(prev => prev.filter(w => w.word.toLowerCase().trim() !== word.toLowerCase().trim()));
+  };
+
+  const handleClearWrongWords = () => {
+    setWrongWords([]);
+  };
+
+  // Inject special Wrong Words list into spelling lists for ChildDashboard
+  const injectedSpellingLists = React.useMemo(() => {
+    if (wrongWords.length === 0) return spellingLists;
+    const wrongWordsList: SpellingList = {
+      id: "wrong-words-notebook",
+      week: "🚨 我的错题本 (Wrong Word Notebook)",
+      date: `有 ${wrongWords.length} 个拼错词等待你战胜！`,
+      items: wrongWords.map((w, index) => ({ ...w, id: index + 1 })),
+      isPreloaded: false,
+      language: "en"
+    };
+    return [wrongWordsList, ...spellingLists];
+  }, [spellingLists, wrongWords]);
+
   // Score recording handler
   const handleCompleteTest = (attempt: TestAttempt) => {
     setTestAttempts(prev => [attempt, ...prev]);
@@ -169,11 +218,14 @@ export default function App() {
           /* CHILD INTERACTION MODE */
           <div className="space-y-6">
             <ChildDashboard
-              spellingLists={spellingLists}
+              spellingLists={injectedSpellingLists}
               onCompleteTest={handleCompleteTest}
               settings={parentSettings}
               avatarEmoji={currentAvatar.emoji}
               onUpdateSettings={setParentSettings}
+              wrongWords={wrongWords}
+              onAddWrongWord={handleAddWrongWord}
+              onRemoveWrongWord={handleRemoveWrongWord}
             />
           </div>
         ) : (
@@ -300,6 +352,9 @@ export default function App() {
                 testAttempts={testAttempts}
                 clearHistory={clearHistory}
                 childName={parentSettings.childName}
+                wrongWords={wrongWords}
+                onRemoveWrongWord={handleRemoveWrongWord}
+                onClearWrongWords={handleClearWrongWords}
               />
             </div>
           </div>
