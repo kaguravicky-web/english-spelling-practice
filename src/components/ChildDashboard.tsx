@@ -16,7 +16,6 @@ import {
   ChevronLeft,
   AlertCircle,
   Clock,
-  Book,
   GraduationCap
 } from "lucide-react";
 import { createSpellingHint, createVocabularyHint, speakText } from "../utils";
@@ -85,7 +84,6 @@ export default function ChildDashboard({
   const [spellingDifficulty, setSpellingDifficulty] = useState<"beginner" | "intermediate" | "advanced">("beginner");
   const [isChoosingDifficulty, setIsChoosingDifficulty] = useState(false);
 
-  // Dictionary / Meaning Overlay state
   const [showDictionary, setShowDictionary] = useState(false);
 
   // Core Practice loop states
@@ -95,6 +93,7 @@ export default function ChildDashboard({
   const [isCorrect, setIsCorrect] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [letterHintCount, setLetterHintCount] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const spellingCellRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -130,6 +129,7 @@ export default function ChildDashboard({
       setIsCorrect(false);
       setAttempts(0);
       setLetterHintCount(0);
+      setShowAnswer(false);
       setCurrentHintUsed(false);
       if (currentItem) {
         if (practiceMode === "spelling") {
@@ -220,6 +220,7 @@ export default function ChildDashboard({
     setTypedAnswer("");
     setHasChecked(false);
     setLetterHintCount(0);
+    setShowAnswer(false);
     setTestResults([]);
     setIsCompleted(false);
   };
@@ -320,7 +321,7 @@ export default function ChildDashboard({
         onRemoveWrongWord(currentItem.word);
       }
     } else {
-      speakText(nextAttempts >= 3 && practiceMode === "spelling" ? `The answer is ${currentItem.word}.` : "Let's try that one again.", 0.9, settings.speechVoice);
+      speakText("Let's try that one again.", 0.9, settings.speechVoice);
       if (practiceMode === "spelling" && selectedList.id !== "wrong-words-notebook") {
         // Keep track of wrong words for "advanced" difficulty as requested: "在最高难度总是写错词"
         if (spellingDifficulty === "advanced") {
@@ -381,7 +382,14 @@ export default function ChildDashboard({
 
   const handleSetLetterHint = (count: number) => {
     setLetterHintCount(count);
-    setCurrentHintUsed(true); // Hint used! No star for this question.
+    setCurrentHintUsed(true);
+  };
+
+  const handleShowAnswer = () => {
+    if (!selectedList) return;
+    setShowAnswer(true);
+    setCurrentHintUsed(true);
+    speakText(`The answer is ${selectedList.items[currentIndex].word}.`, 0.9, settings.speechVoice);
   };
 
   const updateSpellingCell = (index: number, value: string, word: string) => {
@@ -446,16 +454,11 @@ export default function ChildDashboard({
     return word.split("").every((_, index) => index < revealCount || Boolean(typedAnswer[index]?.trim()));
   };
 
-  const handleOpenDictionary = () => {
-    setShowDictionary(true);
-    setCurrentHintUsed(true); // Definition lookup is also a hint! No star for this question.
-  };
-
   const renderSpellingCells = (word: string) => {
     const wordLength = word.length;
     const baseRevealCount = getBaseRevealCount(wordLength);
     const totalRevealCount = getRevealCount(wordLength);
-    const answerRevealed = hasChecked && !isCorrect && attempts >= 3;
+    const answerRevealed = showAnswer;
     return (
       <div className="space-y-3 mt-4 text-center">
         <div className={`flex justify-center gap-1.5 flex-wrap font-sans font-black ${
@@ -1062,35 +1065,39 @@ export default function ChildDashboard({
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleOpenDictionary}
-                      className="flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-xl text-xs font-extrabold shadow-3xs"
-                    >
-                      <Book className="w-3.5 h-3.5" />
-                      Word Meaning
-                    </button>
-
-                    {practiceMode === "spelling" && !hasChecked && (
+                    {practiceMode === "spelling" && !isCorrect && (
                       <>
-                        <span className="text-[10px] font-black uppercase tracking-wide text-slate-500 flex items-center gap-1">
-                          <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
-                          Letter hints
-                        </span>
-                        {[1, 2, 3].map(count => (
+                        {!hasChecked && (
+                          <>
+                            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500 flex items-center gap-1">
+                              <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
+                              Letter hints
+                            </span>
+                            {[1, 2, 3].map(count => (
+                              <button
+                                key={count}
+                                type="button"
+                                onClick={() => handleSetLetterHint(count)}
+                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
+                                  letterHintCount >= count
+                                    ? "bg-indigo-600 border-indigo-600 text-white"
+                                    : "bg-indigo-50 border-indigo-100 text-indigo-600 hover:text-indigo-800"
+                                }`}
+                              >
+                                {count} Letter{count > 1 ? "s" : ""}
+                              </button>
+                            ))}
+                          </>
+                        )}
+                        {attempts >= 3 && !showAnswer && (
                           <button
-                            key={count}
                             type="button"
-                            onClick={() => handleSetLetterHint(count)}
-                            className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
-                              letterHintCount >= count
-                                ? "bg-indigo-600 border-indigo-600 text-white"
-                                : "bg-indigo-50 border-indigo-100 text-indigo-600 hover:text-indigo-800"
-                            }`}
+                            onClick={handleShowAnswer}
+                            className="text-xs font-bold px-3 py-1.5 rounded-xl border bg-amber-500 border-amber-500 text-white hover:bg-amber-600 transition-all"
                           >
-                            {count} Letter{count > 1 ? "s" : ""}
+                            Show Answer
                           </button>
-                        ))}
+                        )}
                       </>
                     )}
                   </div>
@@ -1125,7 +1132,7 @@ export default function ChildDashboard({
                         </button>
                       )}
                       
-                      {(isCorrect || attempts >= 3) && (
+                      {(isCorrect || showAnswer) && (
                         <button
                           id="child-next-question-btn"
                           type="button"
@@ -1157,10 +1164,10 @@ export default function ChildDashboard({
                     {!isCorrect && (
                       <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
                         <p className="text-[10px] font-black uppercase tracking-wide">
-                          {practiceMode === "spelling" && attempts >= 3 ? "Answer" : "Small hint"}
+                          {practiceMode === "spelling" && showAnswer ? "Answer" : "Small hint"}
                         </p>
                         <p className={`mt-0.5 font-semibold ${fs('base')}`}>
-                          {practiceMode === "spelling" && attempts >= 3
+                          {practiceMode === "spelling" && showAnswer
                             ? selectedList.items[currentIndex].word
                             : practiceMode === "spelling"
                             ? createSpellingHint(selectedList.items[currentIndex].word, typedAnswer, attempts)
