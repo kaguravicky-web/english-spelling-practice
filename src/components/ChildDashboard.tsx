@@ -95,7 +95,6 @@ export default function ChildDashboard({
   const [letterHintCount, setLetterHintCount] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const spellingCellRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Hint rules tracking: did the kid look up word definitions or show letter hints for the current word?
   const [currentHintUsed, setCurrentHintUsed] = useState(false);
@@ -299,7 +298,7 @@ export default function ChildDashboard({
     
     let correct = false;
     if (practiceMode === "spelling") {
-      const userTyped = getSpellingAnswerCandidate(currentItem.word).trim();
+      const userTyped = typedAnswer.trim();
       correct = userTyped.toLowerCase() === currentItem.word.toLowerCase();
     } else if (practiceMode === "vocabulary" && vocabQuestion) {
       const chosen = selectedOption || typedAnswer.trim();
@@ -341,7 +340,7 @@ export default function ChildDashboard({
       itemId: currentItem.id,
       word: currentItem.word,
       text: currentItem.text,
-      typed: practiceMode === "spelling" ? getSpellingAnswerCandidate(currentItem.word) : typedAnswer,
+      typed: typedAnswer,
       isCorrect: isCorrect,
       hintUsed: currentHintUsed
     };
@@ -387,43 +386,11 @@ export default function ChildDashboard({
 
   const handleShowAnswer = () => {
     if (!selectedList) return;
+    const answer = selectedList.items[currentIndex].word;
     setShowAnswer(true);
+    setTypedAnswer(answer);
     setCurrentHintUsed(true);
-    speakText(`The answer is ${selectedList.items[currentIndex].word}.`, 0.9, settings.speechVoice);
-  };
-
-  const updateSpellingCell = (index: number, value: string, word: string) => {
-    const nextChar = value.slice(-1);
-    const answerChars = Array.from({ length: word.length }, (_, charIndex) => typedAnswer[charIndex] || " ");
-    answerChars[index] = nextChar;
-    const nextAnswer = answerChars.join("").slice(0, word.length).trimEnd();
-    setTypedAnswer(nextAnswer);
-
-    if (nextChar && index < word.length - 1) {
-      spellingCellRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleSpellingCellKeyDown = (
-    event: React.KeyboardEvent<HTMLInputElement>,
-    index: number,
-    word: string
-  ) => {
-    if (event.key === "Backspace" && !typedAnswer[index]?.trim() && index > 0) {
-      spellingCellRefs.current[index - 1]?.focus();
-      return;
-    }
-
-    if (event.key === "Enter" && isSpellingAnswerComplete(word) && !(hasChecked && isCorrect)) {
-      checkAnswer();
-      return;
-    }
-
-    if (event.key.length === 1 && index < getRevealCount(word.length)) {
-      event.preventDefault();
-      const nextIndex = Math.min(getRevealCount(word.length), word.length - 1);
-      spellingCellRefs.current[nextIndex]?.focus();
-    }
+    speakText(`The answer is ${answer}.`, 0.9, settings.speechVoice);
   };
 
   const getBaseRevealCount = (wordLength: number) => {
@@ -438,25 +405,8 @@ export default function ChildDashboard({
 
   const getRevealCount = (wordLength: number) => Math.min(wordLength, getBaseRevealCount(wordLength) + letterHintCount);
 
-  const getSpellingAnswerCandidate = (word: string) => {
-    const revealCount = getRevealCount(word.length);
-    return word
-      .split("")
-      .map((char, index) => {
-        const typedChar = typedAnswer[index];
-        return index < revealCount ? char : typedChar && typedChar.trim() ? typedChar : "";
-      })
-      .join("");
-  };
-
-  const isSpellingAnswerComplete = (word: string) => {
-    const revealCount = getRevealCount(word.length);
-    return word.split("").every((_, index) => index < revealCount || Boolean(typedAnswer[index]?.trim()));
-  };
-
   const renderSpellingCells = (word: string) => {
     const wordLength = word.length;
-    const baseRevealCount = getBaseRevealCount(wordLength);
     const totalRevealCount = getRevealCount(wordLength);
     const answerRevealed = showAnswer;
     return (
@@ -471,35 +421,31 @@ export default function ChildDashboard({
           {word.split("").map((char, index) => {
             const shouldReveal = answerRevealed || index < totalRevealCount;
             const typedChar = typedAnswer[index];
-            const displayValue = shouldReveal ? char : typedChar && typedChar.trim() ? typedChar : "";
+            const displayValue = shouldReveal ? char : typedChar && typedChar.trim() ? typedChar : "_";
+            const typedMatches = typedChar?.toLowerCase() === char.toLowerCase();
 
             return (
-              <input
+              <div
                 key={index}
-                ref={(input) => {
-                  spellingCellRefs.current[index] = input;
-                }}
                 aria-label={`Letter ${index + 1} of ${wordLength}`}
-                value={displayValue}
-                maxLength={1}
-                autoFocus={index === totalRevealCount}
-                disabled={shouldReveal || (hasChecked && isCorrect)}
-                onChange={(event) => updateSpellingCell(index, event.target.value, word)}
-                onKeyDown={(event) => handleSpellingCellKeyDown(event, index, word)}
-                className={`text-center rounded-2xl border-3 transition-all outline-hidden ${
+                className={`flex items-center justify-center rounded-2xl border-3 transition-all ${
                   settings.fontSize === "huge"
                     ? "w-18 h-20 sm:w-20 sm:h-24"
                     : settings.fontSize === "large"
                     ? "w-16 h-18 sm:w-18 sm:h-22"
                     : "w-14 h-16 sm:w-16 sm:h-20"
                 } ${
-                  shouldReveal 
+                  shouldReveal
                     ? "bg-indigo-50 border-indigo-400 text-indigo-700 font-extrabold scale-105" 
-                    : hasChecked && !isCorrect
-                    ? "bg-red-50 border-red-300 text-red-700 focus:border-red-500"
-                    : "bg-white border-slate-250 text-slate-800 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                    : hasChecked && typedMatches
+                    ? "bg-emerald-50 border-emerald-400 text-emerald-700"
+                    : hasChecked && typedChar
+                    ? "bg-red-50 border-red-300 text-red-700"
+                    : "bg-white border-slate-250 text-slate-400"
                 }`}
-              />
+              >
+                {displayValue}
+              </div>
             );
           })}
         </div>
@@ -965,6 +911,41 @@ export default function ChildDashboard({
 
                     {renderSpellingCells(selectedList.items[currentIndex].word)}
 
+                    <div className="mt-5 max-w-lg mx-auto">
+                      <label className={`block font-bold text-slate-600 uppercase tracking-wide transition-all text-left mb-2 ${fs('base')}`}>
+                        Type the whole word:
+                      </label>
+                      <input
+                        id="child-typed-input"
+                        type="text"
+                        autoFocus
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        value={showAnswer ? selectedList.items[currentIndex].word : typedAnswer}
+                        onChange={(e) => {
+                          setTypedAnswer(e.target.value);
+                          if (hasChecked && !isCorrect) {
+                            setHasChecked(false);
+                          }
+                        }}
+                        disabled={showAnswer || (hasChecked && isCorrect)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && typedAnswer.trim() && !(hasChecked && isCorrect)) {
+                            checkAnswer();
+                          }
+                        }}
+                        placeholder="Type the full spelling word..."
+                        className={`w-full font-sans text-center font-extrabold border-3 border-indigo-200 focus:border-indigo-500 rounded-2xl px-5 transition-all text-slate-800 focus:outline-hidden focus:ring-4 focus:ring-indigo-100 bg-white shadow-xs ${
+                          settings.fontSize === "huge"
+                            ? "text-5xl sm:text-6xl py-6"
+                            : settings.fontSize === "large"
+                            ? "text-4xl sm:text-5xl py-5"
+                            : "text-3xl sm:text-4xl py-4"
+                        }`}
+                      />
+                    </div>
+
                     {/* Sentence Context display on-screen with blanked word for native English kids to read along! */}
                     <div className="mt-5 p-4 bg-white/80 border border-indigo-100/50 rounded-2xl max-w-lg mx-auto shadow-2xs text-left">
                       <span className="text-[10px] text-indigo-500 font-extrabold uppercase tracking-wider block mb-1">
@@ -1067,29 +1048,26 @@ export default function ChildDashboard({
                   <div className="flex flex-wrap items-center gap-2">
                     {practiceMode === "spelling" && !isCorrect && (
                       <>
-                        {!hasChecked && (
-                          <>
-                            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500 flex items-center gap-1">
-                              <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
-                              Letter hints
-                            </span>
-                            {[1, 2, 3].map(count => (
-                              <button
-                                key={count}
-                                type="button"
-                                onClick={() => handleSetLetterHint(count)}
-                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
-                                  letterHintCount >= count
-                                    ? "bg-indigo-600 border-indigo-600 text-white"
-                                    : "bg-indigo-50 border-indigo-100 text-indigo-600 hover:text-indigo-800"
-                                }`}
-                              >
-                                {count} Letter{count > 1 ? "s" : ""}
-                              </button>
-                            ))}
-                          </>
-                        )}
-                        {attempts >= 3 && !showAnswer && (
+                        <span className="text-[10px] font-black uppercase tracking-wide text-slate-500 flex items-center gap-1">
+                          <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
+                          Letter hints
+                        </span>
+                        {[1, 2, 3].map(count => (
+                          <button
+                            key={count}
+                            type="button"
+                            onClick={() => handleSetLetterHint(count)}
+                            disabled={showAnswer}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
+                              letterHintCount >= count
+                                ? "bg-indigo-600 border-indigo-600 text-white"
+                                : "bg-indigo-50 border-indigo-100 text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                            }`}
+                          >
+                            {count} Letter{count > 1 ? "s" : ""}
+                          </button>
+                        ))}
+                        {!showAnswer && (
                           <button
                             type="button"
                             onClick={handleShowAnswer}
@@ -1109,7 +1087,7 @@ export default function ChildDashboard({
                     <button
                       id="child-check-answer-btn"
                       type="button"
-                      disabled={!isSpellingAnswerComplete(selectedList.items[currentIndex].word)}
+                      disabled={!typedAnswer.trim()}
                       onClick={() => checkAnswer()}
                       className="w-full sm:w-auto bg-slate-800 hover:bg-slate-900 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold py-2.5 px-6 rounded-xl shadow-3xs flex items-center justify-center gap-1.5 transition-all"
                     >
