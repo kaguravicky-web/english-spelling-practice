@@ -419,6 +419,20 @@ export default function ChildDashboard({
             : "text-2xl sm:text-3xl"
         }`}>
           {word.split("").map((char, index) => {
+            // Some spelling words are whole phrases, so show a gap where a space belongs
+            // instead of an empty letter box the child would try to fill in.
+            if (char === " ") {
+              return (
+                <div
+                  key={index}
+                  aria-label="Space"
+                  className="flex items-end justify-center w-5 sm:w-6 pb-4"
+                >
+                  <span className="block w-3 border-b-4 rounded-full border-slate-300" />
+                </div>
+              );
+            }
+
             const shouldReveal = answerRevealed || index < totalRevealCount;
             const typedChar = typedAnswer[index];
             const displayValue = shouldReveal ? char : typedChar && typedChar.trim() ? typedChar : "_";

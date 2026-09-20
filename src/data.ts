@@ -552,6 +552,272 @@ export const defaultSpellingLists: SpellingList[] = [
         antonyms: ["protected", "nurtured", "raised"]
       }
     ]
+  },
+  {
+    id: "term4-week2-spelling12",
+    week: "Term 4 Week 2 - Spelling 12",
+    date: "21 September",
+    language: "en",
+    isPreloaded: true,
+    items: [
+      {
+        id: 1,
+        word: "against",
+        text: "Henry left his tennis racket leaning against the door.",
+        definition: "Touching or resting on something for support.",
+        synonyms: ["on", "touching", "up beside", "resting on"],
+        antonyms: ["away from", "apart from", "clear of"]
+      },
+      {
+        id: 2,
+        word: "bobbing up",
+        text: "The little canoe was bobbing up and down in the choppy waves.",
+        definition: "Moving quickly up and down on top of the water.",
+        synonyms: ["floating up", "rising up", "popping up"],
+        antonyms: ["sinking", "going under", "staying still"]
+      },
+      {
+        id: 3,
+        word: "boldly",
+        text: "James marched up boldly to speak to the policeman.",
+        definition: "In a brave and confident way, without any fear.",
+        synonyms: ["bravely", "confidently", "fearlessly", "daringly"],
+        antonyms: ["shyly", "timidly", "nervously", "fearfully"]
+      },
+      {
+        id: 4,
+        word: "cast an evil spell",
+        text: "The witch cast an evil spell on the helpless villagers.",
+        definition: "Used wicked magic words to bring something bad upon someone.",
+        synonyms: ["put a curse on", "bewitched them", "worked dark magic"],
+        antonyms: ["blessed them", "broke the curse", "protected them"]
+      },
+      {
+        id: 5,
+        word: "desired",
+        text: "John put in a lot of effort in the spelling bee as he had desired to win it.",
+        definition: "Wanted something very strongly.",
+        synonyms: ["wanted", "wished for", "longed for", "hoped for"],
+        antonyms: ["disliked", "refused", "rejected", "avoided"]
+      },
+      {
+        id: 6,
+        word: "floating",
+        text: "The bubbles were floating in the air for a while before bursting.",
+        definition: "Staying up and drifting gently in the air or on water.",
+        synonyms: ["drifting", "gliding", "hovering", "sailing"],
+        antonyms: ["sinking", "dropping", "falling", "plunging"]
+      },
+      {
+        id: 7,
+        word: "filthy and murky",
+        text: "The water in the canal was filthy and murky. Some people have been throwing their litter inside.",
+        definition: "Very dirty and so cloudy that you cannot see through it.",
+        synonyms: ["dirty and cloudy", "grimy and muddy", "foul and unclear"],
+        antonyms: ["clean and clear", "spotless", "fresh and sparkling"]
+      },
+      {
+        id: 8,
+        word: "hollow",
+        text: "Inside the hollow chocolate egg was a plastic toy!",
+        definition: "Having an empty space inside instead of being solid.",
+        synonyms: ["empty inside", "unfilled", "not solid"],
+        antonyms: ["solid", "filled", "packed", "full"]
+      },
+      {
+        id: 9,
+        word: "honour her promise",
+        text: "Jane did not honour her promise to her mother and went out to play when she was supposed to be revising for her test.",
+        definition: "To do exactly what she had said she would do.",
+        synonyms: ["keep her word", "stick to her promise", "carry out her promise"],
+        antonyms: ["break her promise", "go back on her word", "let her down"]
+      },
+      {
+        id: 10,
+        word: "mumbled",
+        text: "The customer mumbled something and left the store in a hurry.",
+        definition: "Spoke quietly and unclearly, so it was hard to understand.",
+        synonyms: ["muttered", "murmured", "grumbled", "whispered"],
+        antonyms: ["shouted", "announced", "spoke clearly", "yelled"]
+      },
+      {
+        id: 11,
+        word: "obvious",
+        text: "The answer is obvious from the clues in the text but the children did not pick it out.",
+        definition: "Very easy to see or understand; clear to everyone.",
+        synonyms: ["clear", "plain", "easy to see", "unmistakable"],
+        antonyms: ["hidden", "unclear", "confusing", "puzzling"]
+      },
+      {
+        id: 12,
+        word: "peered out",
+        text: "Louis peered out the window sadly as the thunderstorm changed his plans for an afternoon outdoors.",
+        definition: "Looked out carefully, trying hard to see.",
+        synonyms: ["looked out", "gazed out", "stared out", "peeped out"],
+        antonyms: ["glanced away", "looked away", "turned away"]
+      },
+      {
+        id: 13,
+        word: "uncontrollably",
+        text: "Simon was shaking uncontrollably as he was nervous about his stage performance.",
+        definition: "In a way that cannot be stopped or held back.",
+        synonyms: ["wildly", "helplessly", "nonstop", "madly"],
+        antonyms: ["calmly", "steadily", "gently", "under control"]
+      },
+      {
+        id: 14,
+        word: "warily",
+        text: "Jones looked at the bullies warily from the corner of his eyes.",
+        definition: "In a careful way, because you think there may be danger.",
+        synonyms: ["cautiously", "carefully", "guardedly", "nervously"],
+        antonyms: ["carelessly", "boldly", "trustingly", "recklessly"]
+      },
+      {
+        id: 15,
+        word: "watching",
+        text: "Mavis was watching her kitten keenly on the first week she brought it back from the animal shelter.",
+        definition: "Looking at someone or something for a period of time.",
+        synonyms: ["observing", "viewing", "looking at", "keeping an eye on"],
+        antonyms: ["ignoring", "overlooking", "neglecting"]
+      },
+      {
+        id: 16,
+        word: "keenly",
+        text: "Mavis was watching her kitten keenly on the first week she brought it back from the animal shelter.",
+        definition: "With great interest and full attention.",
+        synonyms: ["eagerly", "closely", "attentively", "sharply"],
+        antonyms: ["carelessly", "lazily", "half-heartedly"]
+      }
+    ]
+  },
+  {
+    id: "term4-week4-spelling13",
+    week: "Term 4 Week 4 - Spelling 13",
+    date: "5 October",
+    language: "en",
+    isPreloaded: true,
+    items: [
+      {
+        id: 1,
+        word: "adventure",
+        text: "The children were all excited to have an adventure in the spooky forest.",
+        definition: "An exciting and unusual experience, often a little risky.",
+        synonyms: ["exciting trip", "quest", "escapade", "expedition"],
+        antonyms: ["boredom", "dull day", "routine"]
+      },
+      {
+        id: 2,
+        word: "appreciation",
+        text: "Ben showed his appreciation to his teacher by creating a 'Thank You' card.",
+        definition: "A thankful feeling for something kind that someone has done.",
+        synonyms: ["gratitude", "thankfulness", "thanks", "recognition"],
+        antonyms: ["ingratitude", "thanklessness", "disrespect"]
+      },
+      {
+        id: 3,
+        word: "blurred his vision",
+        text: "Mr Tan made a wrong turn because the heavy rain blurred his vision, causing him to read the street name wrongly.",
+        definition: "Made it hard for him to see things clearly.",
+        synonyms: ["clouded his sight", "fogged his view", "made his sight unclear"],
+        antonyms: ["cleared his view", "sharpened his sight"]
+      },
+      {
+        id: 4,
+        word: "chatter",
+        text: "Mrs Teo could hear the chatter of her students in the air-conditioned room when she was outside.",
+        definition: "The sound of people talking quickly about small, unimportant things.",
+        synonyms: ["chit-chat", "babble", "gossip", "jabber"],
+        antonyms: ["silence", "quiet", "stillness", "hush"]
+      },
+      {
+        id: 5,
+        word: "concentrating",
+        text: "Ivy was concentrating in her revision and did not hear her parents enter the house.",
+        definition: "Giving all your attention to one thing.",
+        synonyms: ["focusing", "paying attention", "thinking hard"],
+        antonyms: ["daydreaming", "getting distracted", "ignoring"]
+      },
+      {
+        id: 6,
+        word: "continued complaining",
+        text: "The customer continued complaining even after the waiter served him what he actually ordered.",
+        definition: "Kept on saying that he was unhappy about something.",
+        synonyms: ["kept grumbling", "went on moaning", "carried on protesting"],
+        antonyms: ["stopped complaining", "kept quiet", "praised him"]
+      },
+      {
+        id: 7,
+        word: "friendly jab",
+        text: "Ken gave George a friendly jab when they met.",
+        definition: "A light, playful poke to show you are happy to see someone.",
+        synonyms: ["playful poke", "gentle nudge", "light tap"],
+        antonyms: ["hard blow", "angry punch", "cold shoulder"]
+      },
+      {
+        id: 8,
+        word: "grimy footprints",
+        text: "The helper took a long time to clean up grimy footprints in the kitchen.",
+        definition: "Dirty marks left on the floor by shoes or feet.",
+        synonyms: ["dirty footmarks", "muddy prints", "filthy tracks"],
+        antonyms: ["clean floor", "spotless tiles"]
+      },
+      {
+        id: 9,
+        word: "in disguise",
+        text: "My dog could not recognise me as I was in disguise for the party.",
+        definition: "Wearing clothes or make-up so that people cannot tell who you are.",
+        synonyms: ["in costume", "dressed up", "masked", "hiding who I am"],
+        antonyms: ["as myself", "uncovered", "plainly dressed"]
+      },
+      {
+        id: 10,
+        word: "in unison",
+        text: "The siblings answered in unison when their mother spoke to them.",
+        definition: "All together, at exactly the same time.",
+        synonyms: ["all together", "at the same time", "as one"],
+        antonyms: ["one by one", "separately", "out of time"]
+      },
+      {
+        id: 11,
+        word: "information",
+        text: "We cannot get started on our task as there is not enough information for it.",
+        definition: "Facts or details that tell you about something.",
+        synonyms: ["facts", "details", "data", "knowledge"],
+        antonyms: ["guesswork", "rumours", "nonsense"]
+      },
+      {
+        id: 12,
+        word: "panicking",
+        text: "Susan started panicking when she realized she had only five minutes more to complete the test.",
+        definition: "Suddenly feeling so worried or afraid that you cannot think clearly.",
+        synonyms: ["getting alarmed", "losing control", "freaking out"],
+        antonyms: ["staying calm", "relaxing", "keeping cool"]
+      },
+      {
+        id: 13,
+        word: "spilt",
+        text: "I spilt some sauce on the new white tablecloth.",
+        definition: "Accidentally let liquid fall out of its container.",
+        synonyms: ["tipped over", "splashed", "slopped", "poured out"],
+        antonyms: ["held steady", "caught it", "kept it in"]
+      },
+      {
+        id: 14,
+        word: "success",
+        text: '"The party was a success, wasn\'t it?" squealed Ms Lim in delight.',
+        definition: "When something turns out very well or reaches its goal.",
+        synonyms: ["triumph", "win", "hit", "achievement"],
+        antonyms: ["failure", "flop", "disaster", "defeat"]
+      },
+      {
+        id: 15,
+        word: "thanked me profusely",
+        text: "The old man thanked me profusely for helping him up the stairs.",
+        definition: "Said thank you again and again in a very grateful way.",
+        synonyms: ["thanked me warmly", "thanked me many times", "was very grateful"],
+        antonyms: ["ignored me", "said nothing", "was ungrateful"]
+      }
+    ]
   }
 ];
 

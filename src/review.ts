@@ -19,12 +19,18 @@ const parseWeekNumber = (title: string) => {
   return match ? Number(match[1]) : 0;
 };
 
+const parseTermNumber = (title: string) => {
+  const match = title.match(/\bterm\s*(\d+)\b/i);
+  return match ? Number(match[1]) : 0;
+};
+
 const recencyScore = (list: SpellingList, index: number) => {
   const timestamp = parseListTimestamp(list.id);
   if (timestamp > 0) return 1_000_000_000_000 + timestamp;
 
   const weekNumber = parseWeekNumber(list.week);
-  if (weekNumber > 0) return weekNumber * 10_000 + index;
+  // Week numbers restart every term, so a titled term outranks a bare "Week N" title.
+  if (weekNumber > 0) return parseTermNumber(list.week) * 1_000_000 + weekNumber * 10_000 + index;
 
   return index;
 };

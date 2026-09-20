@@ -102,3 +102,37 @@ test("createPracticeListWithReview adds deduped words from the two most recent s
   assert.deepEqual(withReview.reviewSources, ["Week 9", "Week 8"]);
   assert.equal(withReview.items[1].reviewSource, "Week 9");
 });
+
+test("getRecentReviewLists treats a later term as newer than a higher week number", () => {
+  const term3Week9: SpellingList = {
+    id: "week9-dictation5",
+    week: "Week 9 - Dictation 5",
+    language: "en",
+    items: [{ id: 1, word: "journey", text: "A long journey." }]
+  };
+  const term4Week2: SpellingList = {
+    id: "term4-week2",
+    week: "Term 4 Week 2 - Spelling 12",
+    language: "en",
+    items: [{ id: 1, word: "hollow", text: "A hollow egg." }]
+  };
+  const term4Week4: SpellingList = {
+    id: "term4-week4",
+    week: "Term 4 Week 4 - Spelling 13",
+    language: "en",
+    items: [{ id: 1, word: "chatter", text: "The chatter of students." }]
+  };
+  const current: SpellingList = {
+    id: "list-300",
+    week: "Term 4 Week 5",
+    language: "en",
+    items: [{ id: 1, word: "sprinted", text: "She sprinted home." }]
+  };
+
+  const recent = getRecentReviewLists(current, [term3Week9, term4Week2, term4Week4]);
+
+  assert.deepEqual(recent.map(list => list.week), [
+    "Term 4 Week 4 - Spelling 13",
+    "Term 4 Week 2 - Spelling 12"
+  ]);
+});
